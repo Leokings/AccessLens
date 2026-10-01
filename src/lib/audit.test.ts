@@ -14,6 +14,13 @@ describe("normalizePublicUrl", () => {
     "https://127.0.0.1/admin",
     "https://user:pass@example.com",
     "https://example.com/#pricing",
+    "https://example.test/",
+    "https://example.com:8443/",
+    "https://example.com/../pricing",
+    "https://example.com/path//more",
+    "https://example.com/contact@support",
+    "https://example.com/a b",
+    "https://sub_domain.example.com/",
   ])("rejects unsafe or unstable target %s", (value) => {
     expect(() => normalizePublicUrl(value)).toThrow();
   });
@@ -47,7 +54,7 @@ describe("GenLayer result parsing", () => {
       page_digest: "a".repeat(64),
       page_chars: 1200n,
       page_truncated: false,
-      policy_version: "ACCESSLENS_PUBLIC_WEB_V1",
+      policy_version: "ACCESSLENS_PUBLIC_WEB_V2",
       created_at: 1_799_999_999n,
       audit_digest: "b".repeat(64),
     });
@@ -66,7 +73,7 @@ describe("GenLayer result parsing", () => {
       parseContractInfo({
         contract_version: "1.0.0",
         audit_schema_version: "ACCESSLENS_AUDIT_V1",
-        policy_version: "ACCESSLENS_PUBLIC_WEB_V1",
+        policy_version: "ACCESSLENS_PUBLIC_WEB_V2",
         audit_count: "4",
         config_digest: "c".repeat(64),
       }).auditCount,

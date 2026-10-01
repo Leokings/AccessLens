@@ -84,9 +84,9 @@ def test_deploy_exposes_versioned_empty_state(direct_vm, direct_deploy, direct_a
     contract = deploy_lens(direct_vm, direct_deploy, direct_alice)
     info = contract.get_contract_info()
 
-    assert info["contract_version"] == "1.0.2"
+    assert info["contract_version"] == "1.0.3"
     assert info["audit_schema_version"] == "ACCESSLENS_AUDIT_V1"
-    assert info["policy_version"] == "ACCESSLENS_PUBLIC_WEB_V1"
+    assert info["policy_version"] == "ACCESSLENS_PUBLIC_WEB_V2"
     assert info["audit_count"] == 0
     assert len(info["config_digest"]) == 64
 
@@ -132,6 +132,34 @@ def test_validator_rejects_materially_wrong_report(direct_vm, direct_deploy, dir
     direct_vm.clear_mocks()
     mock_page(direct_vm)
     mock_validator(direct_vm, False)
+    assert direct_vm.run_validator() is False
+
+
+def test_validator_prompt_rejects_praise_as_finding(direct_vm, direct_deploy, direct_alice):
+    contract = deploy_lens(direct_vm, direct_deploy, direct_alice)
+    mock_page(direct_vm)
+    mock_leader(
+        direct_vm,
+        audit_payload(
+            findings=[
+                {
+                    "category": "ACCESSIBILITY",
+                    "severity": "LOW",
+                    "title": "Good semantic structure",
+                    "evidence": "<h1>Create your Acme account</h1>",
+                    "recommendation": "Keep using one clear main heading.",
+                }
+            ]
+        ),
+    )
+    submit(contract, "positive-finding-001")
+
+    direct_vm.clear_mocks()
+    mock_page(direct_vm)
+    direct_vm.mock_llm(
+        r"(?s).*ACCESSLENS_CANDIDATE_REVIEW_V1.*Reject any finding that describes a strength.*",
+        json.dumps({"valid": False}),
+    )
     assert direct_vm.run_validator() is False
 
 

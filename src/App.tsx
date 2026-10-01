@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { AuditReport } from "./components/AuditReport";
 import { LensMark } from "./components/LensMark";
 import { normalizePublicUrl, shortAddress, verdictLabel } from "./lib/audit";
@@ -46,6 +46,7 @@ function App() {
   const [loadingLedger, setLoadingLedger] = useState(true);
   const [ledgerError, setLedgerError] = useState("");
   const [search, setSearch] = useState("");
+  const [pendingAudit, setPendingAudit] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
 
   const busy = ["signing", "submitted", "finalizing", "reading"].includes(status.phase);
@@ -75,12 +76,38 @@ function App() {
     }
   }
 
+  const showFinalizedAudit = useCallback((audit: AuditRecord, hash: string) => {
+    setSelectedAudit(audit);
+    setRecentAudits((current) => [audit, ...current.filter((item) => item.auditId !== audit.auditId)]);
+    setContractInfo((current) => current ? {
+      ...current,
+      auditCount: Math.max(current.auditCount, audit.auditId),
+    } : current);
+    setPendingAudit(false);
+    setPreviousAuditId(0);
+    setStatus({ phase: "success", message: `Audit #${audit.auditId} is finalized and stored.`, hash });
+    window.setTimeout(() => document.getElementById(`report-title-${audit.auditId}`)?.focus(), 50);
+  }, []);
+
   useEffect(() => {
-    void import("./lib/genlayer").then(({ restoreStudioWallet }) => {
+    void import("./lib/genlayer").then(async ({ restoreStudioWallet, getPendingAudit, resumePendingAudit }) => {
       setWallet((current) => current ?? restoreStudioWallet());
+      const pending = getPendingAudit();
+      if (!pending) return;
+      setPendingAudit(true);
+      setStatus({ phase: "finalizing", message: statusCopy("finalizing"), hash: pending.hash });
+      try {
+        const { audit, hash } = await resumePendingAudit((phase, transactionHash) => {
+          setStatus({ phase, message: statusCopy(phase), hash: transactionHash });
+        });
+        showFinalizedAudit(audit, hash);
+      } catch (cause) {
+        setPendingAudit(Boolean(getPendingAudit()));
+        setStatus({ phase: "error", message: friendlyError(cause), hash: pending.hash });
+      }
     });
     void refreshLedger();
-  }, []);
+  }, [showFinalizedAudit]);
 
   async function handleConnect(kind: WalletKind) {
     setConnecting(kind);
@@ -97,7 +124,7 @@ function App() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!wallet || busy) return;
+    if (!wallet || busy || pendingAudit) return;
     try {
       const canonicalUrl = normalizePublicUrl(url);
       setUrl(canonicalUrl);
@@ -107,21 +134,38 @@ function App() {
         wallet,
         { url: canonicalUrl, focus, previousAuditId },
         (phase, transactionHash) => {
+          if (transactionHash) setPendingAudit(true);
           setStatus({ phase, message: statusCopy(phase), hash: transactionHash });
         },
       );
-      setSelectedAudit(audit);
-      setRecentAudits((current) => [audit, ...current.filter((item) => item.auditId !== audit.auditId)]);
-      setContractInfo((current) => (current ? { ...current, auditCount: current.auditCount + 1 } : current));
-      setPreviousAuditId(0);
-      setStatus({ phase: "success", message: `Audit #${audit.auditId} is finalized and stored.`, hash });
-      window.setTimeout(() => document.getElementById(`report-title-${audit.auditId}`)?.focus(), 50);
+      showFinalizedAudit(audit, hash);
     } catch (cause) {
+      const { getPendingAudit } = await import("./lib/genlayer");
+      setPendingAudit(Boolean(getPendingAudit()));
       setStatus((current) => ({
         phase: "error",
         message: friendlyError(cause),
         hash: "hash" in current ? current.hash : undefined,
       }));
+    }
+  }
+
+  async function handleResume() {
+    const { getPendingAudit, resumePendingAudit } = await import("./lib/genlayer");
+    const pending = getPendingAudit();
+    if (!pending) {
+      setPendingAudit(false);
+      return;
+    }
+    setStatus({ phase: "finalizing", message: statusCopy("finalizing"), hash: pending.hash });
+    try {
+      const { audit, hash } = await resumePendingAudit((phase, transactionHash) => {
+        setStatus({ phase, message: statusCopy(phase), hash: transactionHash });
+      });
+      showFinalizedAudit(audit, hash);
+    } catch (cause) {
+      setPendingAudit(Boolean(getPendingAudit()));
+      setStatus({ phase: "error", message: friendlyError(cause), hash: pending.hash });
     }
   }
 
@@ -157,7 +201,7 @@ function App() {
             <div className="eyebrow-chip"><span>✦</span> Consensus website reviews</div>
             <h1 id="hero-title">See what your interface makes people <em>fight through.</em></h1>
             <p>
-              Paste any public page. GenLayer validators independently inspect its rendered HTML for
+              Paste a public HTTPS page. GenLayer validators independently inspect its rendered HTML for
               accessibility barriers, dark patterns, and missing trust signals—then store one reviewable report.
             </p>
             <div className="hero__actions">
@@ -171,7 +215,7 @@ function App() {
             </ul>
           </div>
 
-          <div className="hero-visual" aria-label="A lens examining accessibility, dark patterns, and trust">
+            <div className="hero-visual" aria-hidden="true">
             <div className="orbit orbit--one"><span>ACCESS</span></div>
             <div className="orbit orbit--two"><span>TRUST</span></div>
             <div className="orbit orbit--three"><span>CHOICE</span></div>
@@ -191,7 +235,8 @@ function App() {
               <ul>
                 <li><strong>Cost:</strong> StudioNet is gasless; no payment or real funds are required.</li>
                 <li><strong>Public record:</strong> The URL, focus, scores, findings, and digests are permanently readable on StudioNet.</li>
-                <li><strong>Limits:</strong> Only public HTTPS pages work. AccessLens inspects up to 48,000 normalized HTML characters.</li>
+                <li><strong>Limits:</strong> Only public HTTPS pages work. AccessLens inspects up to 48,000 normalized HTML characters. Dynamic or bot-protected pages may fail without storing a report.</li>
+                <li><strong>Operator &amp; terms:</strong> Built by <a href="https://github.com/Leokings" target="_blank" rel="noopener noreferrer" aria-label="Leokings on GitHub (opens in a new tab)">Leokings</a>. Read the <a href="/privacy.html">privacy notice</a> and <a href="/terms.html">use terms</a> before submitting. <a href="https://github.com/Leokings/AccessLens/issues" target="_blank" rel="noopener noreferrer" aria-label="Contact support through GitHub issues (opens in a new tab)">Contact support</a>.</li>
               </ul>
             </aside>
           </div>
@@ -242,8 +287,9 @@ function App() {
                 <details className="focus-details">
                   <summary>Add an optional review focus</summary>
                   <label htmlFor="audit-focus">What journey deserves extra attention?</label>
-                  <textarea id="audit-focus" maxLength={280} placeholder="For example: Check whether a new visitor can understand pricing and cancel easily." value={focus} onChange={(event) => setFocus(event.target.value)} disabled={busy} />
-                  <span>{focus.length} / 280</span>
+                  <textarea id="audit-focus" aria-describedby="audit-focus-count" maxLength={280} placeholder="For example: Check whether a new visitor can understand pricing and cancel easily." value={focus} onChange={(event) => setFocus(event.target.value)} disabled={busy} />
+                  <span id="audit-focus-count">{focus.length} / 280 characters</span>
+                  <span className="sr-only" role="status" aria-live="polite">{focus.length >= 230 ? `${280 - focus.length} characters remaining` : ""}</span>
                 </details>
                 {previousAuditId > 0 ? (
                   <div className="compare-note"><span aria-hidden="true">↻</span><p>This will create a new report linked to audit #{previousAuditId}; the original stays unchanged.</p><button type="button" onClick={() => setPreviousAuditId(0)}>Remove link</button></div>
@@ -252,13 +298,17 @@ function App() {
             </div>
 
             <div className="submit-row">
-              <div id="audit-ready-help" className={`status-message status-message--${status.phase}`} role="status" aria-live="polite">
-                <span className="status-message__indicator" />
-                <div><strong>{status.phase === "error" ? "Needs attention" : status.phase === "success" ? "Stored on-chain" : busy ? "Audit in progress" : "Ready to inspect"}</strong><p>{status.message}</p></div>
-                {"hash" in status && status.hash ? <a href={transactionExplorerUrl(status.hash)} target="_blank" rel="noopener noreferrer" aria-label="View transaction (opens in a new tab)">Transaction ↗</a> : null}
+              <div>
+                <div id="audit-ready-help" className={`status-message status-message--${status.phase}`} role="status" aria-live="polite">
+                  <span className="status-message__indicator" aria-hidden="true" />
+                  <div><strong>{status.phase === "error" ? "Needs attention" : status.phase === "success" ? "Stored on-chain" : busy ? "Audit in progress" : "Ready to inspect"}</strong><p>{status.message}</p></div>
+                  {"hash" in status && status.hash ? <a href={transactionExplorerUrl(status.hash)} target="_blank" rel="noopener noreferrer" aria-label="View transaction (opens in a new tab)">Transaction ↗</a> : null}
+                  {pendingAudit && !busy ? <button type="button" onClick={() => void handleResume()}>Resume submitted audit</button> : null}
+                </div>
+                <p id="submit-disclosure" className="submit-disclosure">If finalized, your URL and optional focus become permanent public StudioNet data. Verify any AI findings against the page.</p>
               </div>
-              <button className="button button--primary button--submit" type="submit" aria-describedby="audit-ready-help" disabled={!wallet || !url.trim() || busy}>
-                {busy ? <><span className="spinner" /> Validators are looking</> : <>Run consensus audit <span aria-hidden="true">↗</span></>}
+              <button className="button button--primary button--submit" type="submit" aria-describedby="audit-ready-help submit-disclosure" disabled={!wallet || !url.trim() || busy || pendingAudit}>
+                {busy ? <><span className="spinner" aria-hidden="true" /> Validators are looking</> : <>Run consensus audit <span aria-hidden="true">↗</span></>}
               </button>
             </div>
           </form>
@@ -282,17 +332,18 @@ function App() {
         <section id="audit-ledger" className="ledger" aria-labelledby="ledger-title">
           <div className="section-heading">
             <div><span className="eyebrow">Public audit ledger</span><h2 id="ledger-title">What the network has reviewed</h2></div>
-            <div id="ledger-health" className="ledger-health" aria-live="polite"><span className={ledgerError ? "health-dot health-dot--error" : "health-dot"} />{contractInfo ? `Contract v${contractInfo.contractVersion} · ${contractInfo.auditCount} finalized` : ledgerError ? "Read unavailable" : "Reading StudioNet…"}</div>
+            <div id="ledger-health" className="ledger-health" aria-live="polite"><span className={ledgerError ? "health-dot health-dot--error" : "health-dot"} aria-hidden="true" />{contractInfo ? `Contract v${contractInfo.contractVersion} · ${contractInfo.auditCount} finalized` : ledgerError ? "Read unavailable" : "Reading StudioNet…"}</div>
           </div>
 
           <div className="ledger-tools">
-            <label htmlFor="ledger-search">Find by domain or audit number</label>
-            <div><span aria-hidden="true">⌕</span><input id="ledger-search" type="search" placeholder="example.com or #12" value={search} onChange={(event) => setSearch(event.target.value)} /><button type="button" aria-describedby="ledger-health" aria-label={loadingLedger ? "Refreshing audit ledger" : "Refresh audit ledger"} onClick={() => void refreshLedger()} disabled={loadingLedger}>{loadingLedger ? "Refreshing…" : "Refresh"}</button></div>
+            <label htmlFor="ledger-search">Filter the 12 most recent audits by domain or number</label>
+            <div><span aria-hidden="true">⌕</span><input id="ledger-search" type="search" aria-describedby="ledger-results-status" placeholder="example.com or #12" value={search} onChange={(event) => setSearch(event.target.value)} /><button type="button" aria-describedby="ledger-health" aria-label={loadingLedger ? "Refreshing audit ledger" : "Refresh audit ledger"} onClick={() => void refreshLedger()} disabled={loadingLedger}>{loadingLedger ? "Refreshing…" : "Refresh"}</button></div>
           </div>
+          <p id="ledger-results-status" className="ledger-results-status" role="status" aria-live="polite">{loadingLedger ? "Loading recent audits." : `Showing ${filteredAudits.length} of ${recentAudits.length} recent audits.`}</p>
 
           {ledgerError ? <div className="ledger-notice ledger-notice--error"><strong>StudioNet could not be read.</strong><p>{ledgerError}</p></div> : null}
-          {!ledgerError && loadingLedger && recentAudits.length === 0 ? <div className="ledger-notice"><span className="spinner spinner--dark" /><p>Reading finalized audits…</p></div> : null}
-          {!ledgerError && !loadingLedger && filteredAudits.length === 0 ? <div className="ledger-notice"><strong>{search ? "No matching audit" : "The ledger is ready for its first page."}</strong><p>{search ? "Try a domain name or another audit number." : "Run an audit above and the finalized result will appear here."}</p></div> : null}
+          {!ledgerError && loadingLedger && recentAudits.length === 0 ? <div className="ledger-notice"><span className="spinner spinner--dark" aria-hidden="true" /><p>Reading finalized audits…</p></div> : null}
+          {!ledgerError && !loadingLedger && filteredAudits.length === 0 ? <div className="ledger-notice"><strong>{search ? "No matching recent audit" : "The ledger is ready for its first page."}</strong><p>{search ? "This filter covers the 12 most recent audits. Try a domain or number in that range." : "Run an audit above and the finalized result will appear here."}</p></div> : null}
           <div className="ledger-list">
             {filteredAudits.map((audit) => (
               <button type="button" className="ledger-item" key={audit.auditId} onClick={() => setSelectedAudit(audit)}>
@@ -310,9 +361,9 @@ function App() {
         <div className="brand"><LensMark compact /><span>AccessLens</span></div>
         <div className="footer-copy">
           <p>Built and operated by Leokings for public-interest interface evidence, resolved by GenLayer consensus.</p>
-          <details id="data-terms"><summary>Data &amp; use terms</summary><p>No personal information is requested. Submitted URLs, optional focus text, and finalized reports are permanent public StudioNet records. Audit only public pages you are permitted to review.</p></details>
+          <details id="data-terms"><summary>Data &amp; use terms</summary><p>No personal information is requested. Submitted URLs, optional focus text, and finalized reports are permanent public StudioNet records. Audit only public pages you are permitted to review. See our <a href="/privacy.html">privacy notice</a> and <a href="/terms.html">use terms</a>.</p></details>
         </div>
-        <div><a href={GITHUB_URL} target="_blank" rel="noopener noreferrer" aria-label="AccessLens GitHub repository (opens in a new tab)">GitHub ↗</a><a href={CONTRACT_EXPLORER_URL} target="_blank" rel="noopener noreferrer" aria-label="AccessLens StudioNet contract (opens in a new tab)">Contract ↗</a><code>{shortAddress(CONTRACT_ADDRESS)}</code></div>
+        <div><a href="/privacy.html">Privacy</a><a href="/terms.html">Terms</a><a href={GITHUB_URL} target="_blank" rel="noopener noreferrer" aria-label="AccessLens GitHub repository (opens in a new tab)">GitHub ↗</a><a href={CONTRACT_EXPLORER_URL} target="_blank" rel="noopener noreferrer" aria-label="AccessLens StudioNet contract (opens in a new tab)">Contract ↗</a><code>{shortAddress(CONTRACT_ADDRESS)}</code></div>
       </footer>
     </div>
   );

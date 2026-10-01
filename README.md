@@ -4,19 +4,21 @@ AccessLens is a GenLayer-native web application that turns a public website URL 
 
 Live app: [https://access-lens-lilac.vercel.app/](https://access-lens-lilac.vercel.app/)
 
-StudioNet contract: [`0xE246F465bD8602ceedcC113ABE7b872ED9a041b7`](https://genlayer-explorer.vercel.app/address/0xE246F465bD8602ceedcC113ABE7b872ED9a041b7)
+StudioNet contract (v1.0.3): [`0x0fA5F9e20F640BB260fcF422F868D3Dac21A247f`](https://genlayer-explorer.vercel.app/address/0x0fA5F9e20F640BB260fcF422F868D3Dac21A247f)
 
-Deployment transaction: [`0xf2e3b596dc4a2200a2ea3c75f51b51e75c08d3d195b81706142edcaeb55a8c54`](https://genlayer-explorer.vercel.app/tx/0xf2e3b596dc4a2200a2ea3c75f51b51e75c08d3d195b81706142edcaeb55a8c54)
+Deployment transaction: [`0x88ee391c6957c60c5dd8cab6f267efa214145d5f96afdee557ce7fb513a8124e`](https://genlayer-explorer.vercel.app/tx/0x88ee391c6957c60c5dd8cab6f267efa214145d5f96afdee557ce7fb513a8124e)
 
-Finalized live audit transaction: [`0xb5150329a18a7dd4d7b1c96df1e295eebca68ea5bec2d676d0d9d37abf9c29d2`](https://genlayer-explorer.vercel.app/tx/0xb5150329a18a7dd4d7b1c96df1e295eebca68ea5bec2d676d0d9d37abf9c29d2)
+Finalized controlled-page audit transaction: [`0xae9aeb4d0b801f5d371e52e4ea8d36e79b15ae39d753567af893889f039bb582`](https://genlayer-explorer.vercel.app/tx/0xae9aeb4d0b801f5d371e52e4ea8d36e79b15ae39d753567af893889f039bb582)
+
+Finalized homepage audit transaction: [`0x16cd4c2a71c127d308a0809920859c5f749fad3164f7fc339339ae0e3ead8a34`](https://genlayer-explorer.vercel.app/tx/0x16cd4c2a71c127d308a0809920859c5f749fad3164f7fc339339ae0e3ead8a34) — audit #5, 94/100, `CLEAR`. Its only low-severity finding was fixed immediately afterward; immutable reports are never rewritten.
 
 ## First-time flow
 
 1. Open AccessLens and choose **Use instant Studio wallet**. The key is generated locally, kept only in that browser tab, and needs no funds on gasless StudioNet.
-2. Paste the exact public HTTPS page to review. A homepage, signup flow, pricing page, checkout page, or policy page all work.
+2. Paste the exact public HTTPS page to review. Homepages, signup, pricing, checkout, and policy pages can be tested, though dynamic or bot-protected pages may fail without storing a report.
 3. Optionally describe a journey that deserves extra attention. This text cannot replace the fixed audit policy.
-4. Submit the audit and wait for GenLayer finality.
-5. Read the stored scores, exact page excerpts, recommendations, page digest, audit digest, requester, policy version, and transaction evidence.
+4. Submit the audit and wait for GenLayer finality. If the tab reloads after submission, AccessLens resumes the saved transaction rather than submitting a duplicate.
+5. Read the stored scores, exact page excerpts, recommendations, page digest, audit digest, requester, policy version, and transaction evidence. Verify AI findings against the page; this is decision support, not a certification.
 6. After improving the page, choose **Re-audit this page**. The new report links to the earlier one without overwriting it.
 
 ## Why GenLayer is necessary
@@ -87,9 +89,9 @@ npm run contract:test:integration
 The current release passes:
 
 - GenVM lint and type checking
-- 21 direct contract tests
+- 22 direct contract tests
 - 2 five-validator GLSim integration tests
-- 9 frontend unit tests
+- 20 frontend unit tests
 - ESLint and TypeScript
 - Production Vite build
 - `npm audit --omit=dev` with zero vulnerabilities

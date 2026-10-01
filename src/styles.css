@@ -515,6 +515,7 @@ summary:focus-visible,
   font-size: 0.78rem;
   line-height: 1.5;
 }
+.audit-disclosure a { color: #174224; font-weight: 800; }
 
 .audit-form {
   border: 1px solid #c9ccc1;
@@ -792,6 +793,17 @@ summary:focus-visible,
 .status-message strong { display: block; font-size: 0.75rem; }
 .status-message p { margin: 3px 0 0; color: #5c665f; font-size: 0.7rem; line-height: 1.35; }
 .status-message a { font-size: 0.68rem; font-weight: 800; }
+.status-message button {
+  border: 1px solid #8694a7;
+  border-radius: 8px;
+  background: #fff;
+  padding: 8px 10px;
+  color: #20314a;
+  font-size: 0.68rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+.submit-disclosure { margin: 6px 0 0 22px; color: #59645c; font-size: 0.66rem; line-height: 1.5; }
 
 .button--submit {
   min-width: 225px;
@@ -1116,6 +1128,7 @@ summary:focus-visible,
 .ledger-tools > div { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 9px; }
 .ledger-tools input { min-height: 42px; border: 0; border-bottom: 1px solid #9ea69f; outline: 0; background: transparent; }
 .ledger-tools button { min-height: 38px; padding: 0 13px; border: 1px solid #9fa69f; border-radius: 9px; background: white; font-size: 0.72rem; font-weight: 780; cursor: pointer; }
+.ledger-results-status { margin: 8px 2px 0; color: #5d6861; font-size: 0.72rem; }
 
 .ledger-list {
   margin-top: 14px;
@@ -1187,7 +1200,7 @@ summary:focus-visible,
 .footer-copy details { color: #b8c3bc; font-size: 0.7rem; text-align: center; }
 .footer-copy summary { cursor: pointer; font-weight: 760; }
 .footer-copy details p { max-width: 52ch; margin: 8px auto 0; line-height: 1.5; }
-.site-footer > div:last-child { display: flex; justify-content: end; align-items: center; gap: 17px; }
+.site-footer > div:last-child { display: flex; justify-content: end; align-items: center; flex-wrap: wrap; gap: 17px; }
 .site-footer a { color: #dbe2dd; font-size: 0.72rem; font-weight: 760; }
 .site-footer code { color: #84938a; font-size: 0.66rem; }
 

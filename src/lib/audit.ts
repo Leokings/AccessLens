@@ -111,7 +111,11 @@ export function parseContractInfo(value: unknown): ContractInfo {
 }
 
 export function normalizePublicUrl(input: string): string {
-  const withScheme = /^https?:\/\//i.test(input.trim()) ? input.trim() : `https://${input.trim()}`;
+  const raw = input.trim();
+  const withScheme = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+  if (/[\s@#\\]/.test(withScheme)) {
+    throw new Error("Remove spaces, login details, fragments, and backslashes from the website address.");
+  }
   let parsed: URL;
   try {
     parsed = new URL(withScheme);
@@ -124,11 +128,24 @@ export function normalizePublicUrl(input: string): string {
   }
   const host = parsed.hostname.toLowerCase();
   const isNumeric = /^[\d.]+$/.test(host);
-  if (!host.includes(".") || host === "localhost" || isNumeric || host.endsWith(".local")) {
+  const reservedSuffixes = [".internal", ".invalid", ".lan", ".local", ".localhost", ".test"];
+  if (
+    !host.includes(".") || isNumeric ||
+    host.length > 253 ||
+    host.split(".").some((label) => !/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(label)) ||
+    reservedSuffixes.some((suffix) => host === suffix.slice(1) || host.endsWith(suffix))
+  ) {
     throw new Error("Use a public domain name. Localhost and IP addresses cannot be audited.");
   }
+  if (parsed.port || /\/(?:\.{1,2})(?:\/|\?|$)/.test(withScheme.slice("https://".length))) {
+    throw new Error("Use the standard HTTPS port and remove path traversal from the address.");
+  }
   parsed.hostname = host;
-  return parsed.toString();
+  const canonical = parsed.toString();
+  if (canonical.length > 1200 || canonical.split("?")[0].includes("//", 8)) {
+    throw new Error("The website address is too long or contains an ambiguous path.");
+  }
+  return canonical;
 }
 
 export function verdictLabel(verdict: Verdict): string {

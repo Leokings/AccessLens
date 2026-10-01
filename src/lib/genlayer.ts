@@ -1,17 +1,20 @@
 import { createAccount, createClient, generatePrivateKey } from "genlayer-js";
 import { studionet } from "genlayer-js/chains";
 import {
+  CalldataAddress,
   TransactionHashVariant,
   TransactionStatus,
   type CalldataEncodable,
   type TransactionHash,
 } from "genlayer-js/types";
-import { getAddress, isAddress } from "viem";
+import { getAddress, hexToBytes, isAddress } from "viem";
 import type { AuditRecord, ConnectedWallet, ContractInfo, WalletKind } from "../types";
 import { normalizePublicUrl, parseAudit, parseContractInfo } from "./audit";
 import { CONTRACT_ADDRESS } from "./config";
+import { classifyAuditTransaction } from "./transaction";
 
 const STUDIO_SESSION_KEY = "accesslens:v1:studio-session-private-key";
+const PENDING_AUDIT_KEY = "accesslens:v1:pending-audit";
 const DEFAULT_RPC_URL = "https://studio.genlayer.com/api";
 const RPC_URL = import.meta.env.VITE_GENLAYER_RPC_URL?.trim() || DEFAULT_RPC_URL;
 const configuredAddress =
@@ -38,6 +41,15 @@ type InjectedProvider = WalletProvider & {
 };
 
 let activeBrowserProvider: InjectedProvider | undefined;
+
+export type PendingAudit = {
+  hash: TransactionHash;
+  reference: string;
+  requester: string;
+  url: string;
+};
+
+class FinalizedAuditError extends Error {}
 
 declare global {
   interface Window {
@@ -168,7 +180,34 @@ export async function getAuditByReference(
   requester: string,
   reference: string,
 ): Promise<AuditRecord> {
-  return parseAudit(await read("get_audit_by_reference", [getAddress(requester), reference]));
+  const addressArgument = new CalldataAddress(hexToBytes(getAddress(requester)));
+  return parseAudit(await read("get_audit_by_reference", [addressArgument, reference]));
+}
+
+export function getPendingAudit(): PendingAudit | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.sessionStorage.getItem(PENDING_AUDIT_KEY);
+    if (!raw) return null;
+    const value: unknown = JSON.parse(raw);
+    if (!value || typeof value !== "object") return null;
+    const pending = value as Record<string, unknown>;
+    if (
+      typeof pending.hash !== "string" || !/^0x[\da-fA-F]{64}$/.test(pending.hash) ||
+      typeof pending.reference !== "string" || !/^[-\w.]{8,72}$/.test(pending.reference) ||
+      typeof pending.requester !== "string" || !isAddress(pending.requester) ||
+      typeof pending.url !== "string" || !pending.url.startsWith("https://")
+    ) return null;
+    return pending as PendingAudit;
+  } catch {
+    return null;
+  }
+}
+
+function forgetPendingAudit(hash: TransactionHash): void {
+  if (getPendingAudit()?.hash === hash) {
+    window.sessionStorage.removeItem(PENDING_AUDIT_KEY);
+  }
 }
 
 function requestReference(): string {
@@ -179,22 +218,79 @@ function requestReference(): string {
 }
 
 async function waitForSuccessfulFinality(hash: TransactionHash): Promise<void> {
-  await readClient.waitForTransactionReceipt({
-    hash,
-    interval: 3_000,
-    retries: 400,
-    status: TransactionStatus.FINALIZED,
-  });
-  const transaction = await readClient.getTransaction({ hash });
-  if (transaction.statusName !== TransactionStatus.FINALIZED) {
-    throw new Error("The audit has not reached GenLayer finality yet.");
+  let waitError: unknown;
+  try {
+    await readClient.waitForTransactionReceipt({
+      hash,
+      interval: 3_000,
+      retries: 400,
+      status: TransactionStatus.FINALIZED,
+    });
+  } catch (cause) {
+    waitError = cause;
   }
-  if (
-    transaction.txExecutionResultName &&
-    transaction.txExecutionResultName !== "FINISHED_WITH_RETURN"
-  ) {
-    throw new Error(`The finalized audit failed: ${transaction.txExecutionResultName}.`);
+
+  let transaction: Awaited<ReturnType<typeof readClient.getTransaction>>;
+  try {
+    transaction = await readClient.getTransaction({ hash });
+  } catch (cause) {
+    throw waitError ?? cause;
   }
+
+  const outcome = classifyAuditTransaction(transaction);
+  if (outcome === "failed") {
+    throw new FinalizedAuditError(
+      "Validators did not approve this audit, so no report was stored. Try a stable public page or retry later.",
+    );
+  }
+  if (outcome === "pending") {
+    throw new Error("StudioNet has not finalized this audit. Resume it after refreshing the page.");
+  }
+  // Some StudioNet nodes omit the execution result from their normalized read.
+  // A finalized result with incomplete fields must also pass the contract readback.
+}
+
+async function finishPendingAudit(
+  pending: PendingAudit,
+  onUpdate?: (phase: "signing" | "submitted" | "finalizing" | "reading", hash?: string) => void,
+): Promise<{ audit: AuditRecord; hash: string }> {
+  onUpdate?.("finalizing", pending.hash);
+  try {
+    await waitForSuccessfulFinality(pending.hash);
+  } catch (cause) {
+    if (cause instanceof FinalizedAuditError) forgetPendingAudit(pending.hash);
+    throw cause;
+  }
+
+  onUpdate?.("reading", pending.hash);
+  let audit: AuditRecord;
+  try {
+    audit = await getAuditByReference(pending.requester, pending.reference);
+  } catch {
+    // The latest-final read can lag the transaction on a StudioNet RPC node.
+    // Search the finalized ledger for the exact requester/reference before
+    // treating this as an uncertain read, never as a fresh-write invitation.
+    const recent = await getRecentAudits(20).catch(() => []);
+    const recovered = recent.find(
+      (item) => item.requester.toLowerCase() === pending.requester.toLowerCase()
+        && item.requestReference === pending.reference,
+    );
+    if (!recovered) {
+      throw new Error("The transaction finalized, but its audit record could not be read yet. Resume this transaction; do not submit it again.");
+    }
+    audit = recovered;
+  }
+
+  forgetPendingAudit(pending.hash);
+  return { audit: { ...audit, transactionHash: pending.hash }, hash: pending.hash };
+}
+
+export async function resumePendingAudit(
+  onUpdate?: (phase: "signing" | "submitted" | "finalizing" | "reading", hash?: string) => void,
+): Promise<{ audit: AuditRecord; hash: string }> {
+  const pending = getPendingAudit();
+  if (!pending) throw new Error("No pending StudioNet audit was found in this browser tab.");
+  return finishPendingAudit(pending, onUpdate);
 }
 
 export async function submitAudit(
@@ -202,6 +298,9 @@ export async function submitAudit(
   input: { url: string; focus: string; previousAuditId?: number },
   onUpdate?: (phase: "signing" | "submitted" | "finalizing" | "reading", hash?: string) => void,
 ): Promise<{ audit: AuditRecord; hash: string }> {
+  if (getPendingAudit()) {
+    throw new Error("A previous audit transaction is still pending. Resume it before starting another audit.");
+  }
   const url = normalizePublicUrl(input.url);
   const reference = requestReference();
   const client = await writeClient(wallet);
@@ -215,10 +314,13 @@ export async function submitAudit(
       value: 0n,
     }),
   );
+  const pending: PendingAudit = {
+    hash,
+    reference,
+    requester: wallet.address,
+    url,
+  };
+  window.sessionStorage.setItem(PENDING_AUDIT_KEY, JSON.stringify(pending));
   onUpdate?.("submitted", hash);
-  onUpdate?.("finalizing", hash);
-  await waitForSuccessfulFinality(hash);
-  onUpdate?.("reading", hash);
-  const audit = await getAuditByReference(wallet.address, reference);
-  return { audit: { ...audit, transactionHash: hash }, hash };
+  return finishPendingAudit(pending, onUpdate);
 }
