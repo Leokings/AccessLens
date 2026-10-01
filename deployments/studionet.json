@@ -1,0 +1,17 @@
+{
+  "network": "studionet",
+  "chainId": 61999,
+  "rpcUrl": "https://studio.genlayer.com/api",
+  "explorerUrl": "https://genlayer-explorer.vercel.app",
+  "contractAddress": "0xA8a7C97530505b9Ce5A37e0EafAc6c9726650396",
+  "contractVersion": "1.0.0",
+  "auditSchemaVersion": "ACCESSLENS_AUDIT_V1",
+  "policyVersion": "ACCESSLENS_PUBLIC_WEB_V1",
+  "configDigest": "2fa778e52f1829788bd1cafecc2f562e894322c1df2018ebc5f547fb8efde7a0",
+  "contractSourceSha256": "08a43915b310eea038f97f3e8bca9afa24c5be682c490471c4a57e67e1e4ee69",
+  "deploymentTransactionHash": "0x19976cc22382a9f65075899159f7ed0a4b1f5b654d8ef9de070ff1ffbdbc0f5b",
+  "deployer": "0x797d3b25fb2cca0ff93f60df1910267f3822d655",
+  "deployedAt": "2026-10-01T09:32:04.596237Z",
+  "deploymentStatus": "FINALIZED",
+  "deploymentExecution": "SUCCESS"
+}
