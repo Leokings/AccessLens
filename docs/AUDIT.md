@@ -2,19 +2,22 @@
 
 Audit date: 2026-10-01
 
-Release: 1.0.0
+Release: contract v1.0.2
 
 ## Outcome
 
-The contract, client, and deployment boundary are ready for a public StudioNet demonstration. No known critical, high, or medium implementation defect remains after the checks below.
+The contract, client, StudioNet deployment, and public Vercel deployment are ready for review. No known critical, high, or medium implementation defect remains after the checks below.
 
 ## Findings closed during the audit
 
-1. **Validator result-shape mismatch — fixed.** The leader returns deterministically derived `overall_score` and `verdict`; the initial validator parser accepted only the pre-derived shape. A direct validator replay exposed the mismatch. The validator now accepts either shape and recomputes both fields, rejecting any mismatch.
-2. **Address readback serialization — fixed.** GLSim exposed that returning the SDK `Address` object inside a public dictionary is not wire-serializable. Public audit views now return the canonical lowercase address string.
-3. **Initial bundle included wallet SDK — fixed.** The GenLayer client is now dynamically imported. The public landing bundle is about 68 kB gzip, while the wallet/RPC code loads only when contract or wallet functionality is requested.
-4. **Two low-contrast helper colors — fixed.** Lighthouse identified the form status helper and method step numbers. Both colors were strengthened and the production-preview accessibility score increased from 96 to 100.
-5. **Inline-style CSP exception — removed.** Score rings now use SVG progress strokes instead of inline custom properties, so production `style-src` is restricted to `'self'`.
+1. **Model-output liveness traps — fixed.** Contract v1.0.2 normalizes and safely bounds validator prose instead of reverting when a model returns a short but valid title, evidence excerpt, recommendation, or summary. Exact evidence matching remains mandatory.
+2. **Validator result-shape mismatch — fixed.** The validator accepts the candidate's derived fields, recomputes the overall score and verdict, and rejects any mismatch.
+3. **Address readback serialization — fixed.** Public audit views return canonical lowercase address strings rather than SDK address objects that GLSim cannot serialize.
+4. **Prompt and target hardening — verified.** Public HTTPS domain checks block local names, IP literals, reserved suffixes, userinfo, fragments, nonstandard ports, and path traversal. Page and user text are explicitly treated as untrusted evidence.
+5. **Exact-evidence enforcement — verified live.** A remediation audit whose leader cited text that was not in the rendered page was rejected by validator consensus and wrote no state. This is the intended safe-failure behavior.
+6. **First-time disclosures and accessibility — fixed.** The production page now explains StudioNet cost, permanent public data, page-size and target limits, temporary-wallet lifetime, URL normalization, disabled-action requirements, external-tab behavior, operator identity, and data/use terms. Step labels and live ledger controls have explicit accessible names.
+7. **Live-data Lighthouse regressions — fixed.** A ledger metadata color and the compact StudioNet link name were corrected after testing with a real stored audit. The final deployed page scores 100 for accessibility.
+8. **Frontend delivery boundary — hardened.** GenLayer wallet/RPC code is dynamically imported, CSP disallows inline scripts and styles, and production responses carry HSTS, clickjacking, MIME-sniffing, referrer, and browser-permission protections.
 
 ## Verified controls
 
@@ -30,26 +33,36 @@ The contract, client, and deployment boundary are ready for a public StudioNet d
 - Immutable same-URL re-audit lineage
 - Finality plus execution-success checks in the client
 - Session-only reviewer wallet
+- Public ledger readback and search
 - Security headers and restrictive CSP
 - Zero runtime npm vulnerabilities
 
 ## Test evidence
 
-- 18/18 direct contract tests passed
-- 2/2 five-validator GLSim tests passed
+- 21/21 direct contract tests passed
+- 2/2 five-validator GLSim integration tests passed
 - 9/9 frontend tests passed
-- ESLint passed
-- TypeScript passed
+- GenVM lint and type checking passed
+- ESLint and TypeScript passed
 - Production build passed
 - `npm audit --omit=dev`: 0 vulnerabilities
-- Lighthouse production preview: 100 Performance, 100 Accessibility, 100 Best Practices
-- StudioNet deployment finalized with five validator agreements and successful execution
+- Lighthouse on the public production URL: 98 Performance, 100 Accessibility, 100 Best Practices
+- Browser readback displayed contract v1.0.2 and finalized audit #1 with no console errors or warnings
+- StudioNet contract deployment finalized with successful execution
+- StudioNet live audit finalized with successful execution and immutable readback
 
 ## Deployment evidence
 
-- Contract: `0xA8a7C97530505b9Ce5A37e0EafAc6c9726650396`
-- Deployment transaction: `0x19976cc22382a9f65075899159f7ed0a4b1f5b654d8ef9de070ff1ffbdbc0f5b`
-- Configuration digest: `2fa778e52f1829788bd1cafecc2f562e894322c1df2018ebc5f547fb8efde7a0`
-- Contract source SHA-256: `08a43915b310eea038f97f3e8bca9afa24c5be682c490471c4a57e67e1e4ee69`
+- Live app: `https://access-lens-lilac.vercel.app/`
+- Vercel deployment: `dpl_GvcFfa9hNi2befikqXeZ6pV36beM` (`READY`)
+- Contract: `0xE246F465bD8602ceedcC113ABE7b872ED9a041b7`
+- Contract version: `1.0.2`
+- Deployment transaction: `0xf2e3b596dc4a2200a2ea3c75f51b51e75c08d3d195b81706142edcaeb55a8c54`
+- Finalized live audit transaction: `0xb5150329a18a7dd4d7b1c96df1e295eebca68ea5bec2d676d0d9d37abf9c29d2`
+- Stored audit ID: `1`
+- Audit digest: `68a5684af5d78ba23f73b552c1fd5580aa493b24d3cee2059be417296e1535b6`
+- Page digest: `b138c5f87f4054b7489a53e8a510ba24a66027e7eaaa8b9aa5946deaa6e22636`
+- Configuration digest: `bd0339c3bb45565db5c4a0a79bca743b42e9d9870879b64ed2009d31c8b6b64b`
+- Contract source SHA-256: `4b9d90f1102fe618113886a4afcc3084e5665637e7da865cd60c5de30ba8a2fa`
 
-The production frontend URL and live self-audit transaction are added to the deployment record after the verified Vercel artifact is promoted.
+The stored 81/100 audit is an immutable snapshot taken before the final interface remediation. The live page closes its concrete findings; the record is retained rather than rewritten.

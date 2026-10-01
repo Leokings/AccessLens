@@ -2,9 +2,13 @@
 
 AccessLens is a GenLayer-native web application that turns a public website URL into an immutable, evidence-backed interface audit. Validators render the live page, inspect accessibility structure, dark-pattern risk, and trust clarity, then decide whether the proposed report is materially supported by the page.
 
-StudioNet contract: [`0xA8a7C97530505b9Ce5A37e0EafAc6c9726650396`](https://genlayer-explorer.vercel.app/address/0xA8a7C97530505b9Ce5A37e0EafAc6c9726650396)
+Live app: [https://access-lens-lilac.vercel.app/](https://access-lens-lilac.vercel.app/)
 
-Deployment transaction: [`0x19976cc22382a9f65075899159f7ed0a4b1f5b654d8ef9de070ff1ffbdbc0f5b`](https://genlayer-explorer.vercel.app/tx/0x19976cc22382a9f65075899159f7ed0a4b1f5b654d8ef9de070ff1ffbdbc0f5b)
+StudioNet contract: [`0xE246F465bD8602ceedcC113ABE7b872ED9a041b7`](https://genlayer-explorer.vercel.app/address/0xE246F465bD8602ceedcC113ABE7b872ED9a041b7)
+
+Deployment transaction: [`0xf2e3b596dc4a2200a2ea3c75f51b51e75c08d3d195b81706142edcaeb55a8c54`](https://genlayer-explorer.vercel.app/tx/0xf2e3b596dc4a2200a2ea3c75f51b51e75c08d3d195b81706142edcaeb55a8c54)
+
+Finalized live audit transaction: [`0xb5150329a18a7dd4d7b1c96df1e295eebca68ea5bec2d676d0d9d37abf9c29d2`](https://genlayer-explorer.vercel.app/tx/0xb5150329a18a7dd4d7b1c96df1e295eebca68ea5bec2d676d0d9d37abf9c29d2)
 
 ## First-time flow
 
@@ -83,17 +87,17 @@ npm run contract:test:integration
 The current release passes:
 
 - GenVM lint and type checking
-- 18 direct contract tests
+- 21 direct contract tests
 - 2 five-validator GLSim integration tests
 - 9 frontend unit tests
 - ESLint and TypeScript
 - Production Vite build
 - `npm audit --omit=dev` with zero vulnerabilities
-- Lighthouse production-preview scores of 100 Performance, 100 Accessibility, and 100 Best Practices
+- Lighthouse production scores of 98 Performance, 100 Accessibility, and 100 Best Practices
 
 ## Deployment integrity
 
-The contract dependency is pinned in the first source line. The StudioNet deployment record in [`deployments/studionet.json`](deployments/studionet.json) binds the address to the contract version, policy version, configuration digest, source SHA-256, deployer, and finalized deployment transaction.
+The contract dependency is pinned in the first source line. The StudioNet deployment record in [`deployments/studionet.json`](deployments/studionet.json) binds the address to the contract version, policy version, configuration digest, source SHA-256, deployer, finalized deployment transaction, public Vercel artifact, and live audit evidence.
 
 ## License
 

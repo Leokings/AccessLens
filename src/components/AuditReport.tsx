@@ -17,7 +17,7 @@ export function AuditReport({
         <div>
           <span className="eyebrow">Finalized audit #{audit.auditId}</span>
           <h2 id={`report-title-${audit.auditId}`} tabIndex={-1}>{audit.domain}</h2>
-          <a className="report__url" href={audit.url} target="_blank" rel="noreferrer">
+          <a className="report__url" href={audit.url} target="_blank" rel="noopener noreferrer" aria-label={`${audit.url} (opens in a new tab)`}>
             {audit.url}
           </a>
         </div>
@@ -94,11 +94,11 @@ export function AuditReport({
       <footer className="report__footer">
         <div className="report__links">
           {audit.transactionHash ? (
-            <a href={transactionExplorerUrl(audit.transactionHash)} target="_blank" rel="noreferrer">
+            <a href={transactionExplorerUrl(audit.transactionHash)} target="_blank" rel="noopener noreferrer" aria-label="View transaction (opens in a new tab)">
               View transaction <span aria-hidden="true">↗</span>
             </a>
           ) : null}
-          <a href={audit.url} target="_blank" rel="noreferrer">
+          <a href={audit.url} target="_blank" rel="noopener noreferrer" aria-label="Open audited page (opens in a new tab)">
             Open audited page <span aria-hidden="true">↗</span>
           </a>
         </div>

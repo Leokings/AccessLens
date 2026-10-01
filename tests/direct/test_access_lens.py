@@ -84,7 +84,7 @@ def test_deploy_exposes_versioned_empty_state(direct_vm, direct_deploy, direct_a
     contract = deploy_lens(direct_vm, direct_deploy, direct_alice)
     info = contract.get_contract_info()
 
-    assert info["contract_version"] == "1.0.0"
+    assert info["contract_version"] == "1.0.2"
     assert info["audit_schema_version"] == "ACCESSLENS_AUDIT_V1"
     assert info["policy_version"] == "ACCESSLENS_PUBLIC_WEB_V1"
     assert info["audit_count"] == 0
@@ -162,6 +162,79 @@ def test_high_severity_finding_forces_high_risk(direct_vm, direct_deploy, direct
     audit = contract.get_audit(submit(contract, "high-risk-001"))
     assert audit["verdict"] == "HIGH_RISK"
     assert audit["dark_pattern_score"] == 30
+
+
+def test_short_precise_finding_title_is_accepted(direct_vm, direct_deploy, direct_alice):
+    """Regression: StudioNet can legitimately return labels such as ARIA."""
+    contract = deploy_lens(direct_vm, direct_deploy, direct_alice)
+    mock_page(direct_vm)
+    mock_leader(
+        direct_vm,
+        audit_payload(
+            findings=[
+                {
+                    "category": "ACCESSIBILITY",
+                    "severity": "LOW",
+                    "title": "ARIA",
+                    "evidence": "Create your Acme account",
+                    "recommendation": "Add an explicit accessible description for the signup region.",
+                }
+            ]
+        ),
+    )
+
+    audit = contract.get_audit(submit(contract, "short-title-001"))
+    assert json.loads(audit["findings_json"])[0]["title"] == "ARIA"
+
+
+def test_zero_finding_report_is_accepted(direct_vm, direct_deploy, direct_alice):
+    contract = deploy_lens(direct_vm, direct_deploy, direct_alice)
+    mock_page(direct_vm)
+    mock_leader(
+        direct_vm,
+        audit_payload(
+            accessibility_score=95,
+            dark_pattern_score=95,
+            trust_score=90,
+            findings=[],
+            summary="The rendered page exposes clear semantics and controls without a material issue supported by the supplied HTML.",
+        ),
+    )
+
+    audit = contract.get_audit(submit(contract, "zero-findings-001"))
+    assert json.loads(audit["findings_json"]) == []
+    assert audit["verdict"] == "CLEAR"
+
+
+def test_model_prose_is_safely_bounded_without_cosmetic_rollbacks(
+    direct_vm, direct_deploy, direct_alice
+):
+    long_evidence = "Accessible interface evidence " * 12
+    page = PAGE_HTML.replace("Join the community in under a minute.", long_evidence)
+    contract = deploy_lens(direct_vm, direct_deploy, direct_alice)
+    mock_page(direct_vm, body=page)
+    mock_leader(
+        direct_vm,
+        audit_payload(
+            findings=[
+                {
+                    "category": "ACCESSIBILITY",
+                    "severity": "LOW",
+                    "title": "A",
+                    "evidence": long_evidence,
+                    "recommendation": "Fix.",
+                }
+            ],
+            summary="Clear.",
+        ),
+    )
+
+    audit = contract.get_audit(submit(contract, "bounded-prose-001"))
+    finding = json.loads(audit["findings_json"])[0]
+    assert finding["title"] == "A"
+    assert finding["recommendation"] == "Fix."
+    assert len(finding["evidence"]) == 220
+    assert audit["summary"] == "Clear."
 
 
 @pytest.mark.parametrize(

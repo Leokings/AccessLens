@@ -85,7 +85,7 @@ def test_glsim_deployment_exposes_empty_versioned_state():
     contract, _owner = _deploy()
     info = contract.get_contract_info(args=[]).call()
 
-    assert info["contract_version"] == "1.0.0"
+    assert info["contract_version"] == "1.0.2"
     assert info["policy_version"] == "ACCESSLENS_PUBLIC_WEB_V1"
     assert info["audit_count"] == 0
 

@@ -12,7 +12,7 @@ import type { AuditRecord, AuditStatus, ConnectedWallet, ContractInfo, WalletKin
 
 const IDLE_STATUS: AuditStatus = {
   phase: "idle",
-  message: "Ready when you are.",
+  message: "Connect a wallet and enter a public HTTPS page to enable the audit.",
 };
 
 function friendlyError(cause: unknown): string {
@@ -135,7 +135,7 @@ function App() {
   }
 
   return (
-    <div className="app-shell">
+    <div className="app-shell" lang="en">
       <header className="site-header">
         <a className="brand" href="#top" aria-label="AccessLens home">
           <LensMark compact />
@@ -146,7 +146,7 @@ function App() {
           <a href="#how-it-works">How it works</a>
           <a href="#audit-ledger">Audit ledger</a>
         </nav>
-        <a className="network-pill" href={CONTRACT_EXPLORER_URL} target="_blank" rel="noreferrer">
+        <a className="network-pill" href={CONTRACT_EXPLORER_URL} target="_blank" rel="noopener noreferrer" aria-label="StudioNet live contract (opens in a new tab)">
           <span /> StudioNet live
         </a>
       </header>
@@ -186,15 +186,23 @@ function App() {
             <span className="eyebrow">Start here</span>
             <h2 id="audit-heading">Give a page a fair second look.</h2>
             <p>No setup jargon. Choose a wallet, paste the exact page, and let validators do the reading.</p>
+            <aside className="audit-disclosure" aria-labelledby="before-you-submit">
+              <h3 id="before-you-submit">Before you submit</h3>
+              <ul>
+                <li><strong>Cost:</strong> StudioNet is gasless; no payment or real funds are required.</li>
+                <li><strong>Public record:</strong> The URL, focus, scores, findings, and digests are permanently readable on StudioNet.</li>
+                <li><strong>Limits:</strong> Only public HTTPS pages work. AccessLens inspects up to 48,000 normalized HTML characters.</li>
+              </ul>
+            </aside>
           </div>
 
           <form id="audit-form" className="audit-form" ref={formRef} onSubmit={handleSubmit}>
             <div className="step-row">
-              <span className="step-number">1</span>
+              <span className="step-number" aria-hidden="true">1</span>
               <div className="step-row__body">
                 <div className="field-heading">
                   <div>
-                    <h3>Choose how to sign</h3>
+                    <h3><span className="sr-only">Step 1 of 2: </span>Choose how to sign</h3>
                     <p>The temporary wallet is the fastest reviewer path and disappears when this tab closes.</p>
                   </div>
                   {wallet ? <span className="connected-chip">Connected</span> : null}
@@ -209,7 +217,7 @@ function App() {
                   <div className="wallet-options">
                     <button className="wallet-option wallet-option--recommended" type="button" onClick={() => void handleConnect("studio")} disabled={connecting !== null}>
                       <span className="wallet-option__icon" aria-hidden="true">✦</span>
-                      <span><strong>{connecting === "studio" ? "Creating wallet…" : "Use instant Studio wallet"}</strong><small>Recommended · free · no extension</small></span>
+                      <span><strong>{connecting === "studio" ? "Creating wallet…" : "Use instant Studio wallet"}</strong><small>Recommended · free · temporary until this tab closes</small></span>
                       <span aria-hidden="true">→</span>
                     </button>
                     <button className="wallet-option" type="button" onClick={() => void handleConnect("browser")} disabled={connecting !== null}>
@@ -223,13 +231,13 @@ function App() {
             </div>
 
             <div className="step-row">
-              <span className="step-number">2</span>
+              <span className="step-number" aria-hidden="true">2</span>
               <div className="step-row__body">
-                <label htmlFor="site-url">Public page to audit</label>
-                <p className="field-help" id="url-help">Use the exact homepage, signup, pricing, checkout, or policy page a visitor sees.</p>
+                <label htmlFor="site-url"><span className="sr-only">Step 2 of 2: </span>Public page to audit</label>
+                <p className="field-help" id="url-help">HTTPS is added automatically. Use the exact homepage, signup, pricing, checkout, or policy page a visitor sees.</p>
                 <div className="url-field">
                   <span aria-hidden="true">https://</span>
-                  <input id="site-url" aria-describedby="url-help" type="text" inputMode="url" autoComplete="url" placeholder="your-site.com/signup" value={url.replace(/^https:\/\//, "")} onChange={(event) => setUrl(event.target.value)} required disabled={busy} />
+                  <input id="site-url" aria-describedby="url-help audit-ready-help" type="text" inputMode="url" autoComplete="url" placeholder="your-site.com/signup" value={url.replace(/^https:\/\//, "")} onChange={(event) => setUrl(event.target.value)} required disabled={busy} />
                 </div>
                 <details className="focus-details">
                   <summary>Add an optional review focus</summary>
@@ -244,12 +252,12 @@ function App() {
             </div>
 
             <div className="submit-row">
-              <div className={`status-message status-message--${status.phase}`} role="status" aria-live="polite">
+              <div id="audit-ready-help" className={`status-message status-message--${status.phase}`} role="status" aria-live="polite">
                 <span className="status-message__indicator" />
                 <div><strong>{status.phase === "error" ? "Needs attention" : status.phase === "success" ? "Stored on-chain" : busy ? "Audit in progress" : "Ready to inspect"}</strong><p>{status.message}</p></div>
-                {"hash" in status && status.hash ? <a href={transactionExplorerUrl(status.hash)} target="_blank" rel="noreferrer">Transaction ↗</a> : null}
+                {"hash" in status && status.hash ? <a href={transactionExplorerUrl(status.hash)} target="_blank" rel="noopener noreferrer" aria-label="View transaction (opens in a new tab)">Transaction ↗</a> : null}
               </div>
-              <button className="button button--primary button--submit" type="submit" disabled={!wallet || !url.trim() || busy}>
+              <button className="button button--primary button--submit" type="submit" aria-describedby="audit-ready-help" disabled={!wallet || !url.trim() || busy}>
                 {busy ? <><span className="spinner" /> Validators are looking</> : <>Run consensus audit <span aria-hidden="true">↗</span></>}
               </button>
             </div>
@@ -274,12 +282,12 @@ function App() {
         <section id="audit-ledger" className="ledger" aria-labelledby="ledger-title">
           <div className="section-heading">
             <div><span className="eyebrow">Public audit ledger</span><h2 id="ledger-title">What the network has reviewed</h2></div>
-            <div className="ledger-health"><span className={ledgerError ? "health-dot health-dot--error" : "health-dot"} />{contractInfo ? `Contract v${contractInfo.contractVersion} · ${contractInfo.auditCount} finalized` : ledgerError ? "Read unavailable" : "Reading StudioNet…"}</div>
+            <div id="ledger-health" className="ledger-health" aria-live="polite"><span className={ledgerError ? "health-dot health-dot--error" : "health-dot"} />{contractInfo ? `Contract v${contractInfo.contractVersion} · ${contractInfo.auditCount} finalized` : ledgerError ? "Read unavailable" : "Reading StudioNet…"}</div>
           </div>
 
           <div className="ledger-tools">
             <label htmlFor="ledger-search">Find by domain or audit number</label>
-            <div><span aria-hidden="true">⌕</span><input id="ledger-search" type="search" placeholder="example.com or #12" value={search} onChange={(event) => setSearch(event.target.value)} /><button type="button" onClick={() => void refreshLedger()} disabled={loadingLedger}>{loadingLedger ? "Refreshing…" : "Refresh"}</button></div>
+            <div><span aria-hidden="true">⌕</span><input id="ledger-search" type="search" placeholder="example.com or #12" value={search} onChange={(event) => setSearch(event.target.value)} /><button type="button" aria-describedby="ledger-health" aria-label={loadingLedger ? "Refreshing audit ledger" : "Refresh audit ledger"} onClick={() => void refreshLedger()} disabled={loadingLedger}>{loadingLedger ? "Refreshing…" : "Refresh"}</button></div>
           </div>
 
           {ledgerError ? <div className="ledger-notice ledger-notice--error"><strong>StudioNet could not be read.</strong><p>{ledgerError}</p></div> : null}
@@ -300,8 +308,11 @@ function App() {
 
       <footer className="site-footer">
         <div className="brand"><LensMark compact /><span>AccessLens</span></div>
-        <p>Public-interest interface evidence, resolved by GenLayer consensus.</p>
-        <div><a href={GITHUB_URL} target="_blank" rel="noreferrer">GitHub ↗</a><a href={CONTRACT_EXPLORER_URL} target="_blank" rel="noreferrer">Contract ↗</a><code>{shortAddress(CONTRACT_ADDRESS)}</code></div>
+        <div className="footer-copy">
+          <p>Built and operated by Leokings for public-interest interface evidence, resolved by GenLayer consensus.</p>
+          <details id="data-terms"><summary>Data &amp; use terms</summary><p>No personal information is requested. Submitted URLs, optional focus text, and finalized reports are permanent public StudioNet records. Audit only public pages you are permitted to review.</p></details>
+        </div>
+        <div><a href={GITHUB_URL} target="_blank" rel="noopener noreferrer" aria-label="AccessLens GitHub repository (opens in a new tab)">GitHub ↗</a><a href={CONTRACT_EXPLORER_URL} target="_blank" rel="noopener noreferrer" aria-label="AccessLens StudioNet contract (opens in a new tab)">Contract ↗</a><code>{shortAddress(CONTRACT_ADDRESS)}</code></div>
       </footer>
     </div>
   );

@@ -10,7 +10,7 @@ from datetime import datetime
 import json
 
 
-CONTRACT_VERSION = "1.0.0"
+CONTRACT_VERSION = "1.0.2"
 AUDIT_SCHEMA_VERSION = "ACCESSLENS_AUDIT_V1"
 POLICY_VERSION = "ACCESSLENS_PUBLIC_WEB_V1"
 DIGEST_DOMAIN = "GENLAYER_ACCESSLENS"
@@ -128,6 +128,22 @@ def _canonical_text(value: str, label: str, minimum: int, maximum: int) -> str:
     normalized = " ".join(value.split())
     if len(normalized) < minimum or len(normalized) > maximum:
         _expected(label)
+    return normalized
+
+
+def _canonical_model_text(value, label: str, maximum: int) -> str:
+    """Normalize bounded model prose without imposing cosmetic liveness traps."""
+    if not isinstance(value, str) or len(value) > maximum * 8:
+        _llm(label)
+    for character in value:
+        codepoint = ord(character)
+        if codepoint == 0 or 127 <= codepoint <= 159 or 55296 <= codepoint <= 57343:
+            _llm(label)
+    normalized = " ".join(value.split())
+    if not normalized:
+        _llm(label)
+    if len(normalized) > maximum:
+        normalized = normalized[:maximum].rstrip()
     return normalized
 
 
@@ -303,13 +319,13 @@ def _validate_findings(value, page_content: str) -> list[dict]:
             or severity not in _SEVERITIES
         ):
             _llm("FINDING_VALUE")
-        title = _canonical_text(item.get("title"), "FINDING_TITLE", 6, MAX_TITLE_CHARS)
-        evidence = _canonical_text(item.get("evidence"), "FINDING_EVIDENCE", 8, MAX_EVIDENCE_CHARS)
-        recommendation = _canonical_text(
-            item.get("recommendation"),
-            "FINDING_RECOMMENDATION",
-            12,
-            MAX_RECOMMENDATION_CHARS,
+        # Model prose is bounded and normalized, but cosmetic length variance
+        # must not roll back an otherwise valid audit. Evidence still has to
+        # be an exact page substring and semantic validators review its value.
+        title = _canonical_model_text(item.get("title"), "FINDING_TITLE", MAX_TITLE_CHARS)
+        evidence = _canonical_model_text(item.get("evidence"), "FINDING_EVIDENCE", MAX_EVIDENCE_CHARS)
+        recommendation = _canonical_model_text(
+            item.get("recommendation"), "FINDING_RECOMMENDATION", MAX_RECOMMENDATION_CHARS
         )
         if evidence not in page_content:
             _llm("EVIDENCE_NOT_FOUND")
@@ -367,7 +383,7 @@ def _validate_candidate(value, page: dict) -> dict:
     dark_pattern = _score(value.get("dark_pattern_score"), "DARK_PATTERN_SCORE")
     trust = _score(value.get("trust_score"), "TRUST_SCORE")
     findings = _validate_findings(value.get("findings"), page["content"])
-    summary = _canonical_text(value.get("summary"), "SUMMARY", 40, MAX_SUMMARY_CHARS)
+    summary = _canonical_model_text(value.get("summary"), "SUMMARY", MAX_SUMMARY_CHARS)
     raw_page_digest = value.get("page_digest")
     page_digest = raw_page_digest if isinstance(raw_page_digest, str) else ""
     if len(page_digest) != 64:
