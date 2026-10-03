@@ -1,16 +1,16 @@
 # AccessLens
 
-AccessLens is a GenLayer-native web application that turns a public website URL into an immutable, evidence-backed interface audit. Validators render the live page, inspect accessibility structure, dark-pattern risk, and trust clarity, then decide whether the proposed report is materially supported by the page.
+AccessLens is a GenLayer-native web application that turns one public HTTPS page into an immutable, evidence-backed **HTML advisory**. Validators render and compare the same bounded HTML prefix, inspect accessibility structure, dark-pattern signals, and trust clarity, then decide whether the proposed report is materially supported. It is not a WCAG certification, full-site audit, or test of interactive behavior.
 
 Live app: [https://access-lens-lilac.vercel.app/](https://access-lens-lilac.vercel.app/)
 
-StudioNet contract (v1.0.3): [`0x0fA5F9e20F640BB260fcF422F868D3Dac21A247f`](https://genlayer-explorer.vercel.app/address/0x0fA5F9e20F640BB260fcF422F868D3Dac21A247f)
+StudioNet contract (v1.0.4): [`0x1fEDe5eff4851E72d042A10B22EF13311EE82eEB`](https://genlayer-explorer.vercel.app/address/0x1fEDe5eff4851E72d042A10B22EF13311EE82eEB)
 
-Deployment transaction: [`0x88ee391c6957c60c5dd8cab6f267efa214145d5f96afdee557ce7fb513a8124e`](https://genlayer-explorer.vercel.app/tx/0x88ee391c6957c60c5dd8cab6f267efa214145d5f96afdee557ce7fb513a8124e)
+Deployment transaction: [`0x0deb8380a83f49294d9988e0fdcde37344c0ff678cf1b5bd2e0c61b64e831aa5`](https://genlayer-explorer.vercel.app/tx/0x0deb8380a83f49294d9988e0fdcde37344c0ff678cf1b5bd2e0c61b64e831aa5)
 
-Finalized controlled-page audit transaction: [`0xae9aeb4d0b801f5d371e52e4ea8d36e79b15ae39d753567af893889f039bb582`](https://genlayer-explorer.vercel.app/tx/0xae9aeb4d0b801f5d371e52e4ea8d36e79b15ae39d753567af893889f039bb582)
+Finalized controlled-page audit transaction: [`0x3664595216e96c59a50030d8efc53c31ddb95b144e6d38fdf30e502e4b2bc565`](https://genlayer-explorer.vercel.app/tx/0x3664595216e96c59a50030d8efc53c31ddb95b144e6d38fdf30e502e4b2bc565) — audit #1, 79/100, 465/465 HTML characters captured, including a correctly identified missing form label.
 
-Finalized homepage audit transaction: [`0x16cd4c2a71c127d308a0809920859c5f749fad3164f7fc339339ae0e3ead8a34`](https://genlayer-explorer.vercel.app/tx/0x16cd4c2a71c127d308a0809920859c5f749fad3164f7fc339339ae0e3ead8a34) — audit #5, 94/100, `CLEAR`. Its only low-severity finding was fixed immediately afterward; immutable reports are never rewritten.
+Finalized first-time browser re-audit: [`0x1a9b1f952e67c5927757399167abefeffce09980fc8030389d325305da425314`](https://genlayer-explorer.vercel.app/tx/0x1a9b1f952e67c5927757399167abefeffce09980fc8030389d325305da425314) — audit #2, signed with a new temporary Studio wallet, linked to audit #1 by ID and full-report digest. Both read back from the new contract.
 
 ## First-time flow
 
@@ -18,8 +18,8 @@ Finalized homepage audit transaction: [`0x16cd4c2a71c127d308a0809920859c5f749fad
 2. Paste the exact public HTTPS page to review. Homepages, signup, pricing, checkout, and policy pages can be tested, though dynamic or bot-protected pages may fail without storing a report.
 3. Optionally describe a journey that deserves extra attention. This text cannot replace the fixed audit policy.
 4. Submit the audit and wait for GenLayer finality. If the tab reloads after submission, AccessLens resumes the saved transaction rather than submitting a duplicate.
-5. Read the stored scores, exact page excerpts, recommendations, page digest, audit digest, requester, policy version, and transaction evidence. Verify AI findings against the page; this is decision support, not a certification.
-6. After improving the page, choose **Re-audit this page**. The new report links to the earlier one without overwriting it.
+5. Read the stored scores, exact page excerpts, recommendations, capture coverage, page-prefix digest, full-report digest, requester, policy version, and transaction evidence. Verify AI findings against the page; the HTML-only advisory is not a certification.
+6. To compare another observation of the same URL, choose **Re-audit this page**. The new report cites the earlier one without overwriting it. That caller-selected link does not prove page ownership, a fix, or a complete remediation history.
 
 ## Why GenLayer is necessary
 
@@ -28,8 +28,8 @@ A normal smart contract cannot open a live website and make a contextual judgmen
 - `gl.nondet.web.render(..., mode="html")` renders the public page independently for the leader and validators.
 - An Intelligent Contract applies a fixed, prompt-injection-resistant audit policy to the rendered HTML.
 - Every finding must contain an exact excerpt from the page evidence.
-- Validators independently re-render the page and accept only a materially supported candidate report.
-- The finalized audit, policy version, evidence digest, lineage, and scores are stored on-chain.
+- Validators independently re-render the page, require an exact inspected-prefix digest/count/truncation match, and accept only a materially supported candidate report.
+- The finalized audit, policy and capture metadata, full-report commitment, caller-selected comparison link, and scores are stored on-chain.
 
 The browser does not generate audit results and there is no application database or private AI key.
 
@@ -47,10 +47,10 @@ GenLayer StudioNet Intelligent Contract
   ├─ renders live HTML
   ├─ leader proposes structured report
   ├─ validators independently check material support
-  └─ stores immutable audit + re-audit lineage
+  └─ stores immutable advisory + same-contract comparison link
 ```
 
-Read [the architecture](docs/ARCHITECTURE.md), [security model](SECURITY.md), [testing guide](docs/TESTING.md), and [audit report](docs/AUDIT.md) for the implementation details.
+Read [the architecture](docs/ARCHITECTURE.md), [evidence and lineage limits](docs/PROVENANCE.md), [security model](SECURITY.md), [testing guide](docs/TESTING.md), and [audit report](docs/AUDIT.md) for the implementation details.
 
 ## Contract interface
 
@@ -89,13 +89,13 @@ npm run contract:test:integration
 The current release passes:
 
 - GenVM lint and type checking
-- 22 direct contract tests
+- 25 direct contract tests
 - 2 five-validator GLSim integration tests
-- 20 frontend unit tests
+- 21 frontend unit tests
 - ESLint and TypeScript
 - Production Vite build
 - `npm audit --omit=dev` with zero vulnerabilities
-- Lighthouse production scores of 98 Performance, 100 Accessibility, and 100 Best Practices
+- Previous v1.0.3 Lighthouse production scores of 98 Performance, 100 Accessibility, and 100 Best Practices; these have not yet been remeasured on v1.0.4
 
 ## Deployment integrity
 

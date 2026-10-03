@@ -64,14 +64,14 @@ def mock_page(direct_vm, url=TEST_URL, body=PAGE_HTML):
 
 def mock_leader(direct_vm, payload=None):
     direct_vm.mock_llm(
-        r"(?s).*ACCESSLENS_AUDIT_V1.*",
+        r"(?s).*ACCESSLENS_AUDIT_V2.*",
         json.dumps(payload or audit_payload()),
     )
 
 
 def mock_validator(direct_vm, valid=True):
     direct_vm.mock_llm(
-        r"(?s).*ACCESSLENS_CANDIDATE_REVIEW_V1.*",
+        r"(?s).*ACCESSLENS_CANDIDATE_REVIEW_V2.*",
         json.dumps({"valid": valid}),
     )
 
@@ -84,9 +84,11 @@ def test_deploy_exposes_versioned_empty_state(direct_vm, direct_deploy, direct_a
     contract = deploy_lens(direct_vm, direct_deploy, direct_alice)
     info = contract.get_contract_info()
 
-    assert info["contract_version"] == "1.0.3"
-    assert info["audit_schema_version"] == "ACCESSLENS_AUDIT_V1"
-    assert info["policy_version"] == "ACCESSLENS_PUBLIC_WEB_V2"
+    assert info["contract_version"] == "1.0.4"
+    assert info["audit_schema_version"] == "ACCESSLENS_AUDIT_V2"
+    assert info["policy_version"] == "ACCESSLENS_PUBLIC_WEB_V3"
+    assert info["provenance_version"] == "EXACT_RENDER_PREFIX_V1"
+    assert info["capture_limit_chars"] == 48000
     assert info["audit_count"] == 0
     assert len(info["config_digest"]) == 64
 
@@ -107,8 +109,63 @@ def test_consensus_audit_is_stored_and_queryable(direct_vm, direct_deploy, direc
     assert audit["domain"] == "example.com"
     assert json.loads(audit["findings_json"])[0]["severity"] == "LOW"
     assert len(audit["page_digest"]) == 64
+    assert audit["captured_chars"] == audit["page_chars"]
+    assert audit["page_truncated"] is False
+    assert audit["capture_scope"] == "WHITESPACE_NORMALIZED_HTML_PREFIX"
+    assert audit["capture_method"] == "web.render(mode=html)"
+    assert audit["previous_audit_digest"] == ""
     assert len(audit["audit_digest"]) == 64
     assert contract.get_audit_count() == 1
+
+
+def test_full_report_digest_is_recomputable_and_commits_summary(
+    direct_vm, direct_deploy, direct_alice
+):
+    contract = deploy_lens(direct_vm, direct_deploy, direct_alice)
+    mock_page(direct_vm)
+    mock_leader(direct_vm)
+    audit = contract.get_audit(submit(contract, "commitment-check-001"))
+    info = contract.get_contract_info()
+
+    def recompute(record):
+        from genlayer import Keccak256
+
+        fields = {
+            "audit_id": int(record["audit_id"]),
+            "request_reference": record["request_reference"],
+            "requester": record["requester"],
+            "url": record["url"],
+            "domain": record["domain"],
+            "focus": record["focus"],
+            "previous_audit_id": int(record["previous_audit_id"]),
+            "previous_audit_digest": record["previous_audit_digest"],
+            "overall_score": int(record["overall_score"]),
+            "accessibility_score": int(record["accessibility_score"]),
+            "dark_pattern_score": int(record["dark_pattern_score"]),
+            "trust_score": int(record["trust_score"]),
+            "verdict": record["verdict"],
+            "findings_json": record["findings_json"],
+            "summary": record["summary"],
+            "page_digest": record["page_digest"],
+            "page_chars": int(record["page_chars"]),
+            "page_truncated": record["page_truncated"],
+            "captured_chars": int(record["captured_chars"]),
+            "capture_method": record["capture_method"],
+            "capture_scope": record["capture_scope"],
+            "capture_limit_chars": info["capture_limit_chars"],
+            "policy_version": record["policy_version"],
+            "provenance_version": record["provenance_version"],
+            "created_at": int(record["created_at"]),
+        }
+        canonical = json.dumps(fields, ensure_ascii=True, separators=(",", ":"), sort_keys=True)
+        parts = ["GENLAYER_ACCESSLENS", "AUDIT_V2", info["config_digest"], canonical]
+        framed = "".join(f"{len(part)}:{part}" for part in parts)
+        return Keccak256(framed.encode("utf-8")).hexdigest()
+
+    assert recompute(audit) == audit["audit_digest"]
+    altered = dict(audit)
+    altered["summary"] = "An altered advisory summary."
+    assert recompute(altered) != audit["audit_digest"]
 
 
 def test_validator_accepts_materially_supported_report(direct_vm, direct_deploy, direct_alice):
@@ -135,6 +192,25 @@ def test_validator_rejects_materially_wrong_report(direct_vm, direct_deploy, dir
     assert direct_vm.run_validator() is False
 
 
+def test_validator_rejects_changed_render_even_with_matching_finding_excerpt(
+    direct_vm, direct_deploy, direct_alice
+):
+    contract = deploy_lens(direct_vm, direct_deploy, direct_alice)
+    mock_page(direct_vm)
+    mock_leader(direct_vm)
+    submit(contract, "validator-provenance-001")
+
+    direct_vm.clear_mocks()
+    changed = PAGE_HTML.replace(
+        "Join the community in under a minute.", "Join the community today."
+    )
+    mock_page(direct_vm, body=changed)
+    mock_validator(direct_vm, True)
+    # The finding excerpt remains present, but the observed HTML is different.
+    assert "Create your Acme account" in changed
+    assert direct_vm.run_validator() is False
+
+
 def test_validator_prompt_rejects_praise_as_finding(direct_vm, direct_deploy, direct_alice):
     contract = deploy_lens(direct_vm, direct_deploy, direct_alice)
     mock_page(direct_vm)
@@ -157,7 +233,7 @@ def test_validator_prompt_rejects_praise_as_finding(direct_vm, direct_deploy, di
     direct_vm.clear_mocks()
     mock_page(direct_vm)
     direct_vm.mock_llm(
-        r"(?s).*ACCESSLENS_CANDIDATE_REVIEW_V1.*Reject any finding that describes a strength.*",
+        r"(?s).*ACCESSLENS_CANDIDATE_REVIEW_V2.*Reject any finding that describes a strength.*",
         json.dumps({"valid": False}),
     )
     assert direct_vm.run_validator() is False
@@ -309,7 +385,7 @@ def test_finding_evidence_must_appear_in_rendered_page(direct_vm, direct_deploy,
 def test_malformed_llm_output_does_not_write_state(direct_vm, direct_deploy, direct_alice):
     contract = deploy_lens(direct_vm, direct_deploy, direct_alice)
     mock_page(direct_vm)
-    direct_vm.mock_llm(r"(?s).*ACCESSLENS_AUDIT_V1.*", json.dumps({"score": 100}))
+    direct_vm.mock_llm(r"(?s).*ACCESSLENS_AUDIT_V2.*", json.dumps({"score": 100}))
 
     with direct_vm.expect_revert("[LLM_ERROR] OUTPUT_FIELDS"):
         submit(contract, "malformed-output-001")
@@ -341,8 +417,21 @@ def test_reaudit_links_to_same_url_and_updates_latest(direct_vm, direct_deploy, 
     latest = contract.get_latest_for_url(TEST_URL)
     recent = contract.get_recent_audits(2)
     assert second["previous_audit_id"] == first_id
+    assert second["previous_audit_digest"] == contract.get_audit(first_id)["audit_digest"]
     assert latest["audit_id"] == second_id
     assert [item["audit_id"] for item in recent] == [second_id, first_id]
+
+
+def test_long_page_explicitly_records_partial_capture(direct_vm, direct_deploy, direct_alice):
+    contract = deploy_lens(direct_vm, direct_deploy, direct_alice)
+    long_html = PAGE_HTML + (" x" * 25000)
+    mock_page(direct_vm, body=long_html)
+    mock_leader(direct_vm)
+
+    audit = contract.get_audit(submit(contract, "partial-capture-001"))
+    assert audit["page_truncated"] is True
+    assert audit["page_chars"] > 48000
+    assert audit["captured_chars"] == 48000
 
 
 def test_reaudit_cannot_attach_to_another_site(direct_vm, direct_deploy, direct_alice):

@@ -1,10 +1,37 @@
 # AccessLens release audit
 
+Current release audit date: 2026-10-03
+
+Current contract: v1.0.4 (`ACCESSLENS_PUBLIC_WEB_V3`, `EXACT_RENDER_PREFIX_V1`)
+
+Current frontend: `https://access-lens-lilac.vercel.app/` (Vercel deployment `dpl_4z3DZKuRWoHNqucpVx51ZyyvJZNx`, `READY`)
+
+## Steward response: advisory scope, provenance, and lineage
+
+The project now calls each result a **one-page HTML advisory**, not an accessibility or safety certification. The contract prompts forbid whole-site, unseen-interaction, color-contrast, or legal-compliance claims; the interface and public terms explain those boundaries before submission and inside each report. The original HTML is not archived, and the report tells readers that a digest cannot reconstruct it.
+
+Validator agreement is now tied to the exact inspected HTML prefix, not merely to matching individual finding excerpts. Each validator independently renders the page and must match the leader's domain-separated prefix digest, original normalized character count, and truncation flag. The record exposes method, scope, count, limit, and provenance version. A separate full-report digest commits to every stored report field, including findings, scores, summary, and chosen parent digest. The direct suite rejects changed HTML even where an excerpt survives and recomputes the report commitment after tampering.
+
+Comparison links remain deliberately permissionless. The contract requires a parent in the same deployment with the same canonical URL and stores the parent's complete report digest. The UI and [provenance guide](PROVENANCE.md) say plainly that the link is caller-selected: it proves neither site ownership nor remediation, linear history, score comparability, or continuity across contract deployments.
+
+The v1.0.4 verification gate passed: GenVM lint and type checking, 25 direct tests, two five-validator GLSim integration tests, ESLint, 21 frontend tests, TypeScript, and a production build. The public app loads contract v1.0.4 and displays new reports with coverage and limitation panels. Both successful StudioNet audit transactions were `FINALIZED`, `MAJORITY_AGREE`, had successful leader execution, and passed contract readback. A fresh temporary wallet also submitted linked audit #2 through the public UI and saw the finalized report there.
+
+### Current live evidence
+
+- Contract deployment: [`0x0deb8380a83f49294d9988e0fdcde37344c0ff678cf1b5bd2e0c61b64e831aa5`](https://genlayer-explorer.vercel.app/tx/0x0deb8380a83f49294d9988e0fdcde37344c0ff678cf1b5bd2e0c61b64e831aa5).
+- Controlled HTML audit #1: [`0x3664595216e96c59a50030d8efc53c31ddb95b144e6d38fdf30e502e4b2bc565`](https://genlayer-explorer.vercel.app/tx/0x3664595216e96c59a50030d8efc53c31ddb95b144e6d38fdf30e502e4b2bc565). The 465-character fixture produced supported form-label and privacy-detail findings; `page_truncated=false`.
+- First-time browser wallet, linked audit #2: [`0x1a9b1f952e67c5927757399167abefeffce09980fc8030389d325305da425314`](https://genlayer-explorer.vercel.app/tx/0x1a9b1f952e67c5927757399167abefeffce09980fc8030389d325305da425314). The new report stores audit #1's digest as its chosen parent and explicitly disclaims ownership or remediation. Both audits share the same page-prefix digest, while their report digests differ.
+- New contract: [`0x1fEDe5eff4851E72d042A10B22EF13311EE82eEB`](https://genlayer-explorer.vercel.app/address/0x1fEDe5eff4851E72d042A10B22EF13311EE82eEB); source SHA-256 `41c205875d72170c7e73d3ae74100869d96defda9801377508a0a475847e7f16`.
+
+The earlier contract and its reports remain available as archives. The first CLI attempt at a v1.0.4 audit finalized with an execution error because the CLI passed `0` for an empty text argument; it stored no audit. The successful controlled and public-browser paths above are the evidence for this release. The installed browser-wallet option and highly dynamic sites are not claimed as newly verified.
+
+## Prior v1.0.3 release (historical)
+
 Audit date: 2026-10-01
 
-Current contract: v1.0.3 (`ACCESSLENS_PUBLIC_WEB_V2`)
+Contract at that release: v1.0.3 (`ACCESSLENS_PUBLIC_WEB_V2`)
 
-Current frontend: `https://access-lens-lilac.vercel.app/`
+Frontend URL at that release: `https://access-lens-lilac.vercel.app/`
 
 ## Outcome
 
@@ -56,4 +83,4 @@ The first-time temporary-wallet path is live and has been exercised end to end o
 - Final homepage audit digest: `d432ec1a6d3d60b0fd8a826f7b10b0d9428f123c3c8ced8a075ef820c9ce53cd`
 - Final homepage page digest: `9964ad8bb59967f8c94aaf12afd0955dfac5fad96f60299599158b64e49f3afb`
 
-The earlier v1.0.2 contract and its immutable audits are preserved in `deployments/studionet.json` for traceability. The public app now uses v1.0.3.
+The v1.0.2 and v1.0.3 contracts and their immutable audits are preserved in `deployments/studionet.json` for traceability. The public app now uses v1.0.4.

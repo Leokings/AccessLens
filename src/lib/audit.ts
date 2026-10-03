@@ -83,6 +83,7 @@ export function parseAudit(value: unknown): AuditRecord {
     domain: textFrom(audit.domain, "audit domain"),
     focus: textFrom(audit.focus, "audit focus"),
     previousAuditId: numberFrom(audit.previous_audit_id, "previous audit ID"),
+    previousAuditDigest: textFrom(audit.previous_audit_digest, "previous audit digest"),
     overallScore: numberFrom(audit.overall_score, "overall score"),
     accessibilityScore: numberFrom(audit.accessibility_score, "accessibility score"),
     darkPatternScore: numberFrom(audit.dark_pattern_score, "dark-pattern score"),
@@ -93,6 +94,10 @@ export function parseAudit(value: unknown): AuditRecord {
     pageDigest: textFrom(audit.page_digest, "page digest"),
     pageChars: numberFrom(audit.page_chars, "page character count"),
     pageTruncated: booleanFrom(audit.page_truncated, "page truncation flag"),
+    capturedChars: numberFrom(audit.captured_chars, "captured character count"),
+    captureMethod: textFrom(audit.capture_method, "capture method"),
+    captureScope: textFrom(audit.capture_scope, "capture scope"),
+    provenanceVersion: textFrom(audit.provenance_version, "provenance version"),
     policyVersion: textFrom(audit.policy_version, "policy version"),
     createdAt: numberFrom(audit.created_at, "creation time"),
     auditDigest: textFrom(audit.audit_digest, "audit digest"),
@@ -105,6 +110,9 @@ export function parseContractInfo(value: unknown): ContractInfo {
     contractVersion: textFrom(info.contract_version, "contract version"),
     auditSchemaVersion: textFrom(info.audit_schema_version, "audit schema version"),
     policyVersion: textFrom(info.policy_version, "policy version"),
+    provenanceVersion: textFrom(info.provenance_version, "provenance version"),
+    captureLimitChars: numberFrom(info.capture_limit_chars, "capture limit"),
+    predecessorContract: textFrom(info.predecessor_contract, "predecessor contract"),
     auditCount: numberFrom(info.audit_count, "audit count"),
     configDigest: textFrom(info.config_digest, "configuration digest"),
   };
@@ -149,9 +157,9 @@ export function normalizePublicUrl(input: string): string {
 }
 
 export function verdictLabel(verdict: Verdict): string {
-  if (verdict === "CLEAR") return "Clear path";
-  if (verdict === "NEEDS_WORK") return "Needs work";
-  return "High risk";
+  if (verdict === "CLEAR") return "No major issue seen";
+  if (verdict === "NEEDS_WORK") return "Review suggested";
+  return "Priority review";
 }
 
 export function categoryLabel(category: FindingCategory): string {

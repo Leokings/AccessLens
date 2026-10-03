@@ -14,7 +14,8 @@
       <h2>Appropriate use</h2>
       <p>Submit only public HTTPS pages that you are permitted to review. Do not submit private systems, sensitive information, or content you do not have a right to share. The URL and optional focus text become public when an audit finalizes.</p>
       <h2>How reports work</h2>
-      <p>GenLayer validators independently render the target page and make contextual judgments. Public pages may change, block automation, or render differently between validators. An audit can fail without a stored report, and two audits of the same page may differ. Treat findings as suggestions to verify, not as definitive facts about every visitor's experience.</p>
+      <p>GenLayer validators independently render the target page and must agree on the same first 48,000 whitespace-normalized HTML characters before a report can finalize. This is one-page, HTML-only advice; it does not test every route, interaction, keyboard or screen-reader behavior, or future page state. Public pages may change, block automation, or render differently, so an audit can fail without a stored report. Treat findings as suggestions to verify, not as definitive facts about every visitor's experience.</p>
+      <p>The page digest commits to the inspected HTML prefix but does not archive the full page. A comparison link verifies an earlier report on this contract for the same URL; it does not prove page ownership, remediation, or history across contract deployments. See the <a href="https://github.com/Leokings/AccessLens/blob/main/docs/PROVENANCE.md">evidence and lineage explanation</a>.</p>
       <h2>Availability and cost</h2>
       <p>The current StudioNet flow is gasless and requires no payment to AccessLens. The demonstration and network may be unavailable or change. A temporary Studio wallet is not intended for holding funds.</p>
       <h2>Contact</h2>

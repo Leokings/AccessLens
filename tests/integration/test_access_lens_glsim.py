@@ -65,8 +65,8 @@ def _validator_context() -> dict:
         5,
         mock_llm_response={
             "nondet_exec_prompt": {
-                "ACCESSLENS_AUDIT_V1": _compact(_leader_payload()),
-                "ACCESSLENS_CANDIDATE_REVIEW_V1": _compact({"valid": True}),
+                "ACCESSLENS_AUDIT_V2": _compact(_leader_payload()),
+                "ACCESSLENS_CANDIDATE_REVIEW_V2": _compact({"valid": True}),
             }
         },
         mock_web_response={
@@ -85,8 +85,9 @@ def test_glsim_deployment_exposes_empty_versioned_state():
     contract, _owner = _deploy()
     info = contract.get_contract_info(args=[]).call()
 
-    assert info["contract_version"] == "1.0.3"
-    assert info["policy_version"] == "ACCESSLENS_PUBLIC_WEB_V2"
+    assert info["contract_version"] == "1.0.4"
+    assert info["policy_version"] == "ACCESSLENS_PUBLIC_WEB_V3"
+    assert info["provenance_version"] == "EXACT_RENDER_PREFIX_V1"
     assert info["audit_count"] == 0
 
 
@@ -107,3 +108,5 @@ def test_glsim_five_validators_finalize_and_store_audit():
     assert json.loads(audit["findings_json"])[0]["category"] == "ACCESSIBILITY"
     assert contract.get_audit_count(args=[]).call() == 1
     assert len(audit["audit_digest"]) == 64
+    assert audit["captured_chars"] == audit["page_chars"]
+    assert audit["previous_audit_digest"] == ""

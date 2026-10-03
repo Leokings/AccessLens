@@ -6,6 +6,7 @@ import {
   CONTRACT_ADDRESS,
   CONTRACT_EXPLORER_URL,
   GITHUB_URL,
+  PREVIOUS_CONTRACT_EXPLORER_URL,
   transactionExplorerUrl,
 } from "./lib/config";
 import type { AuditRecord, AuditStatus, ConnectedWallet, ContractInfo, WalletKind } from "./types";
@@ -201,8 +202,8 @@ function App() {
             <div className="eyebrow-chip"><span>✦</span> Consensus website reviews</div>
             <h1 id="hero-title">See what your interface makes people <em>fight through.</em></h1>
             <p>
-              Paste a public HTTPS page. GenLayer validators independently inspect its rendered HTML for
-              accessibility barriers, dark patterns, and missing trust signals—then store one reviewable report.
+              Paste a public HTTPS page. GenLayer validators compare the same captured HTML prefix,
+              review accessibility, dark-pattern, and trust signals, then store a one-page advisory.
             </p>
             <div className="hero__actions">
               <a className="button button--primary" href="#audit-form">Audit a page <span aria-hidden="true">↘</span></a>
@@ -235,7 +236,8 @@ function App() {
               <ul>
                 <li><strong>Cost:</strong> StudioNet is gasless; no payment or real funds are required.</li>
                 <li><strong>Public record:</strong> The URL, focus, scores, findings, and digests are permanently readable on StudioNet.</li>
-                <li><strong>Limits:</strong> Only public HTTPS pages work. AccessLens inspects up to 48,000 normalized HTML characters. Dynamic or bot-protected pages may fail without storing a report.</li>
+                <li><strong>Advisory scope:</strong> This is not WCAG certification or a whole-site audit. It cannot test unseen interactions, actual keyboard or screen-reader behavior, or later page changes.</li>
+                <li><strong>Evidence limit:</strong> Validators must match a digest of the same first 48,000 whitespace-normalized HTML characters. Exact finding excerpts, not the full HTML, are stored. Dynamic or bot-protected pages may fail without a report.</li>
                 <li><strong>Operator &amp; terms:</strong> Built by <a href="https://github.com/Leokings" target="_blank" rel="noopener noreferrer" aria-label="Leokings on GitHub (opens in a new tab)">Leokings</a>. Read the <a href="/privacy.html">privacy notice</a> and <a href="/terms.html">use terms</a> before submitting. <a href="https://github.com/Leokings/AccessLens/issues" target="_blank" rel="noopener noreferrer" aria-label="Contact support through GitHub issues (opens in a new tab)">Contact support</a>.</li>
               </ul>
             </aside>
@@ -292,7 +294,7 @@ function App() {
                   <span className="sr-only" role="status" aria-live="polite">{focus.length >= 230 ? `${280 - focus.length} characters remaining` : ""}</span>
                 </details>
                 {previousAuditId > 0 ? (
-                  <div className="compare-note"><span aria-hidden="true">↻</span><p>This will create a new report linked to audit #{previousAuditId}; the original stays unchanged.</p><button type="button" onClick={() => setPreviousAuditId(0)}>Remove link</button></div>
+                  <div className="compare-note"><span aria-hidden="true">↻</span><p>This will link a new report to audit #{previousAuditId} for the same URL. The original stays unchanged. The link does not prove page ownership or remediation.</p><button type="button" onClick={() => setPreviousAuditId(0)}>Remove link</button></div>
                 ) : null}
               </div>
             </div>
@@ -305,7 +307,7 @@ function App() {
                   {"hash" in status && status.hash ? <a href={transactionExplorerUrl(status.hash)} target="_blank" rel="noopener noreferrer" aria-label="View transaction (opens in a new tab)">Transaction ↗</a> : null}
                   {pendingAudit && !busy ? <button type="button" onClick={() => void handleResume()}>Resume submitted audit</button> : null}
                 </div>
-                <p id="submit-disclosure" className="submit-disclosure">If finalized, your URL and optional focus become permanent public StudioNet data. Verify any AI findings against the page.</p>
+                <p id="submit-disclosure" className="submit-disclosure">If finalized, your URL and optional focus become permanent public StudioNet data. This HTML-only advisory is not a compliance certification; verify findings against the page.</p>
               </div>
               <button className="button button--primary button--submit" type="submit" aria-describedby="audit-ready-help submit-disclosure" disabled={!wallet || !url.trim() || busy || pendingAudit}>
                 {busy ? <><span className="spinner" aria-hidden="true" /> Validators are looking</> : <>Run consensus audit <span aria-hidden="true">↗</span></>}
@@ -319,13 +321,13 @@ function App() {
         <section id="how-it-works" className="method" aria-labelledby="method-title">
           <div className="section-heading section-heading--light">
             <div><span className="eyebrow">The method</span><h2 id="method-title">One page. Three lenses. Five independent checks.</h2></div>
-            <p>AccessLens keeps the policy fixed and treats every word on the target site as untrusted evidence.</p>
+            <p>AccessLens keeps the advisory policy fixed and treats every word on the target site as untrusted evidence.</p>
           </div>
           <div className="method-grid">
-            <article><span className="method-icon" aria-hidden="true">⌁</span><b>01</b><h3>Render the real page</h3><p>Validators open the public HTTPS URL and inspect its live HTML—not a description pasted by the submitter.</p></article>
-            <article><span className="method-icon" aria-hidden="true">A</span><b>02</b><h3>Test three dimensions</h3><p>Semantic accessibility, freedom from manipulative patterns, and the clarity of important trust information.</p></article>
-            <article><span className="method-icon" aria-hidden="true">✓</span><b>03</b><h3>Validate the report</h3><p>Findings need exact page evidence. Other validators reject invented claims, missing high-risk issues, or a wrong risk band.</p></article>
-            <article><span className="method-icon" aria-hidden="true">#</span><b>04</b><h3>Keep the trail</h3><p>The scores, findings, page digest, policy version, requester, and prior-audit link become a durable record.</p></article>
+            <article><span className="method-icon" aria-hidden="true">⌁</span><b>01</b><h3>Capture one page</h3><p>Validators render the public HTTPS URL and inspect the same bounded HTML prefix—not a submitter&apos;s description or the whole site.</p></article>
+            <article><span className="method-icon" aria-hidden="true">A</span><b>02</b><h3>Advise, not certify</h3><p>Scores estimate what the captured markup supports about semantics, manipulative patterns, and trust clarity. Interactions remain untested.</p></article>
+            <article><span className="method-icon" aria-hidden="true">✓</span><b>03</b><h3>Match the evidence</h3><p>Validators require an exact capture digest match and page excerpts for findings, then reject materially unsupported reports.</p></article>
+            <article><span className="method-icon" aria-hidden="true">#</span><b>04</b><h3>Keep an honest trail</h3><p>The full report is committed on-chain. A comparison link cites a caller-selected earlier report for the same URL; it does not prove ownership or remediation.</p></article>
           </div>
         </section>
 
@@ -334,6 +336,7 @@ function App() {
             <div><span className="eyebrow">Public audit ledger</span><h2 id="ledger-title">What the network has reviewed</h2></div>
             <div id="ledger-health" className="ledger-health" aria-live="polite"><span className={ledgerError ? "health-dot health-dot--error" : "health-dot"} aria-hidden="true" />{contractInfo ? `Contract v${contractInfo.contractVersion} · ${contractInfo.auditCount} finalized` : ledgerError ? "Read unavailable" : "Reading StudioNet…"}</div>
           </div>
+          <p className="ledger-history-note">This list covers the current contract only. Older v1.0.3 reports remain on the <a href={PREVIOUS_CONTRACT_EXPLORER_URL} target="_blank" rel="noopener noreferrer">previous StudioNet contract</a>; audit IDs and comparison links do not cross deployments.</p>
 
           <div className="ledger-tools">
             <label htmlFor="ledger-search">Filter the 12 most recent audits by domain or number</label>

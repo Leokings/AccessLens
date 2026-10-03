@@ -18,6 +18,7 @@ export type AuditRecord = {
   domain: string;
   focus: string;
   previousAuditId: number;
+  previousAuditDigest: string;
   overallScore: number;
   accessibilityScore: number;
   darkPatternScore: number;
@@ -28,6 +29,10 @@ export type AuditRecord = {
   pageDigest: string;
   pageChars: number;
   pageTruncated: boolean;
+  capturedChars: number;
+  captureMethod: string;
+  captureScope: string;
+  provenanceVersion: string;
   policyVersion: string;
   createdAt: number;
   auditDigest: string;
@@ -38,6 +43,9 @@ export type ContractInfo = {
   contractVersion: string;
   auditSchemaVersion: string;
   policyVersion: string;
+  provenanceVersion: string;
+  captureLimitChars: number;
+  predecessorContract: string;
   auditCount: number;
   configDigest: string;
 };

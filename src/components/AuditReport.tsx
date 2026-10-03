@@ -15,7 +15,7 @@ export function AuditReport({
     <article className="report" aria-labelledby={`report-title-${audit.auditId}`}>
       <header className="report__header">
         <div>
-          <span className="eyebrow">Finalized audit #{audit.auditId}</span>
+          <span className="eyebrow">Finalized HTML advisory #{audit.auditId}</span>
           <h2 id={`report-title-${audit.auditId}`} tabIndex={-1}>{audit.domain}</h2>
           <a className="report__url" href={audit.url} target="_blank" rel="noopener noreferrer" aria-label={`${audit.url} (opens in a new tab)`}>
             {audit.url}
@@ -29,7 +29,13 @@ export function AuditReport({
 
       <p className="report__summary">{audit.summary}</p>
 
-      <section className="score-board" aria-label="Audit scores">
+      <div className="report__scope" role="note">
+        <strong>Advisory, not certification.</strong> Scores describe only the captured HTML of this one URL.
+        They do not establish WCAG compliance, keyboard or screen-reader behavior, page ownership,
+        unseen interactions, or the state of the page after this transaction.
+      </div>
+
+      <section className="score-board" aria-label="Advisory scores for captured HTML">
         <ScoreGauge score={audit.overallScore} label="Overall" tone="overall" />
         <ScoreGauge score={audit.accessibilityScore} label="Accessibility" tone="access" />
         <ScoreGauge score={audit.darkPatternScore} label="User respect" tone="respect" />
@@ -48,7 +54,7 @@ export function AuditReport({
         {audit.findings.length === 0 ? (
           <div className="empty-findings">
             <span aria-hidden="true">✦</span>
-            <p>No material issue was established from the rendered page.</p>
+            <p>No material issue was established from the captured HTML. This is not proof that the page has no issues.</p>
           </div>
         ) : (
           <div className="finding-list">
@@ -72,24 +78,41 @@ export function AuditReport({
         )}
       </section>
 
-      <section className="proof-strip" aria-label="On-chain proof">
+      <section className="proof-strip" aria-label="On-chain evidence and capture scope">
         <div>
-          <span>Audit digest</span>
+          <span>Full-report commitment</span>
           <code title={audit.auditDigest}>{shortDigest(audit.auditDigest)}</code>
         </div>
         <div>
-          <span>Page snapshot digest</span>
+          <span>Captured HTML prefix digest</span>
           <code title={audit.pageDigest}>{shortDigest(audit.pageDigest)}</code>
+        </div>
+        <div>
+          <span>Capture coverage</span>
+          <strong>{audit.capturedChars.toLocaleString()} of {audit.pageChars.toLocaleString()} normalized characters{audit.pageTruncated ? " · truncated" : ""}</strong>
+        </div>
+        <div>
+          <span>Policy / provenance</span>
+          <strong>{audit.policyVersion} · {audit.provenanceVersion}</strong>
         </div>
         <div>
           <span>Requested by</span>
           <code title={audit.requester}>{shortAddress(audit.requester)}</code>
         </div>
         <div>
-          <span>Finalized</span>
+          <span>Transaction time</span>
           <strong>{date.toLocaleString()}</strong>
         </div>
       </section>
+
+      <aside className="report__provenance" aria-label="Evidence and lineage limits">
+        <p><strong>What is bound:</strong> Validators had to match the same whitespace-normalized HTML prefix before accepting this advisory. The stored digest commits to that prefix and URL; finding excerpts are stored with the report. The full source HTML is not archived, so the digest alone cannot reconstruct the page.</p>
+        {audit.previousAuditId > 0 ? (
+          <p><strong>Comparison link:</strong> Audit #{audit.previousAuditId} ({shortDigest(audit.previousAuditDigest)}) is an earlier record on this contract for the same canonical URL. The link was chosen by the caller; it does not verify site ownership, a fix, or an unbroken cross-deployment history.</p>
+        ) : (
+          <p><strong>Comparison link:</strong> None selected. Audit IDs belong to this contract; this does not mean the page was never reviewed on an older deployment.</p>
+        )}
+      </aside>
 
       <footer className="report__footer">
         <div className="report__links">
