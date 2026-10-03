@@ -4,7 +4,7 @@ Current release audit date: 2026-10-03
 
 Current contract: v1.0.4 (`ACCESSLENS_PUBLIC_WEB_V3`, `EXACT_RENDER_PREFIX_V1`)
 
-Current frontend: `https://access-lens-lilac.vercel.app/` (Vercel deployment `dpl_4z3DZKuRWoHNqucpVx51ZyyvJZNx`, `READY`)
+Current frontend: `https://access-lens-lilac.vercel.app/`. Verified production artifact: Vercel deployment `dpl_4z3DZKuRWoHNqucpVx51ZyyvJZNx` (`READY`); the public alias may advance to a later Git-triggered deployment of the same code.
 
 ## Steward response: advisory scope, provenance, and lineage
 
